@@ -58,7 +58,7 @@
             }
             try {
                 stubRegister({ email, displayName, password });
-                window.location.href = next || 'dashboard.html';
+                window.location.href = next || 'index.html';
             } catch (err) {
                 showError(err.message || 'Registration failed.');
             }

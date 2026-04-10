@@ -420,7 +420,7 @@ body {
     color: #cbd5e1;
 }
 
-/* --- Responsive --- */
+/* --- Responsive (legacy MPA pages only) --- */
 
 @media (max-width: 768px) {
     .sidebar {
@@ -435,3 +435,542 @@ body {
         padding: 1rem;
     }
 }
+
+/* =============================================================================
+   APP SHELL — title bar, dropdown, content area
+   The shell is the new entry point at index.html. Everything below is for it.
+   ============================================================================= */
+
+.app-shell {
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ── Title bar ───────────────────────────────────────────────────────────── */
+
+.app-titlebar {
+    flex: 0 0 60px;
+    background: var(--ao-sidebar-bg);
+    display: flex;
+    align-items: center;
+    padding: 0 1rem 0 1.25rem;
+    gap: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    z-index: 1050;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.app-titlebar .app-brand {
+    color: #fff;
+    font-size: 1.35rem;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 0 0 auto;
+}
+.app-titlebar .app-brand .brand-flower {
+    font-size: 1rem;
+}
+.app-titlebar .app-brand:hover {
+    opacity: 0.85;
+}
+
+/* Platform switcher button */
+.platform-switcher {
+    flex: 0 0 auto;
+    margin-left: 0.75rem;
+}
+.btn-platform-switcher {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 0.45rem 1rem;
+    font-weight: 600;
+    font-size: 0.92rem;
+    min-width: 220px;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    transition: background 0.15s;
+}
+.btn-platform-switcher:hover, .btn-platform-switcher:focus {
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.25);
+}
+.btn-platform-switcher::after {
+    margin-left: auto;
+}
+
+/* The dropdown panel itself */
+.platform-dropdown-menu {
+    min-width: 360px;
+    max-height: 70vh;
+    overflow-y: auto;
+    padding: 0.5rem 0;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.15);
+}
+.platform-dropdown-menu .dropdown-header {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6c757d;
+    padding: 0.5rem 1rem 0.25rem;
+    margin: 0;
+}
+.platform-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 1rem;
+}
+.platform-dropdown-item:hover {
+    background: #f8f9fa;
+}
+.platform-dropdown-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 32px;
+    font-size: 0.92rem;
+}
+.platform-dropdown-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+    flex: 1;
+}
+.platform-dropdown-text strong {
+    font-size: 0.92rem;
+    color: #1f2937;
+}
+.platform-dropdown-text small {
+    font-size: 0.72rem;
+}
+.opacity-60 {
+    opacity: 0.65;
+}
+
+/* Title bar right-side actions */
+.titlebar-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.btn-titlebar {
+    background: transparent;
+    color: rgba(255, 255, 255, 0.85);
+    border: none;
+    border-radius: 8px;
+    padding: 0.5rem 0.7rem;
+    position: relative;
+    transition: background 0.15s;
+}
+.btn-titlebar:hover, .btn-titlebar:focus {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+.notification-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: var(--ao-accent);
+    color: #fff;
+    font-size: 0.62rem;
+    font-weight: 700;
+    padding: 0.1rem 0.35rem;
+    border-radius: 999px;
+    min-width: 16px;
+    text-align: center;
+    line-height: 1.2;
+}
+
+/* Account dropdown */
+.account-dropdown .account-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.6rem;
+}
+.account-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--ao-gradient);
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.account-name {
+    font-size: 0.88rem;
+    font-weight: 500;
+}
+
+/* ── Content area ───────────────────────────────────────────────────────── */
+
+.app-content {
+    flex: 1 1 auto;
+    overflow: auto;
+    background: #f8f9fa;
+    position: relative;
+}
+
+.app-content.app-content-embedded {
+    padding: 0;
+    overflow: hidden;
+}
+.app-content.app-content-embedded iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+}
+
+.app-content.app-content-native {
+    padding: 0;
+}
+
+.app-content-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #6c757d;
+}
+.app-content-loading i {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    color: var(--ao-primary);
+}
+
+.native-view-wrap {
+    padding: 1.75rem 2rem 3rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* ── Native view: System Dashboard ──────────────────────────────────────── */
+
+.system-dashboard .dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+.system-dashboard .dashboard-header h1 {
+    font-size: 1.65rem;
+    font-weight: 700;
+    margin: 0 0 0.25rem 0;
+}
+
+.kpi-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1.25rem;
+    height: 100%;
+}
+.kpi-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+}
+.kpi-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.2;
+}
+.kpi-label {
+    font-size: 0.78rem;
+    color: #64748b;
+    margin-top: 0.15rem;
+}
+.kpi-trend {
+    font-size: 0.78rem;
+    margin-top: 0.35rem;
+}
+
+.dashboard-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+    height: 100%;
+}
+.dashboard-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+.dashboard-card-header h5 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+.dashboard-card-body {
+    padding: 1rem 1.25rem;
+}
+
+.health-list { list-style: none; padding: 0; margin: 0; }
+.health-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 0.88rem;
+}
+.health-item:last-child { border-bottom: none; }
+
+.activity-feed .activity-item {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+.activity-feed .activity-item:last-child { border-bottom: none; }
+.activity-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: #f0f9ff;
+    color: #0891b2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 28px;
+}
+.activity-body { flex: 1; font-size: 0.88rem; }
+.activity-detail { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.72rem; }
+
+.drill-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    text-decoration: none;
+    color: #1f2937;
+    text-align: center;
+    font-size: 0.85rem;
+    transition: all 0.15s;
+    background: #fff;
+}
+.drill-tile:hover {
+    border-color: var(--ao-primary);
+    color: var(--ao-primary);
+    transform: translateY(-1px);
+}
+.drill-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ── Native view: Home tile grid ────────────────────────────────────────── */
+
+.home-view .home-header {
+    margin-bottom: 2rem;
+}
+.home-view .home-header h1 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin: 0 0 0.25rem 0;
+}
+
+.home-section {
+    margin-bottom: 2rem;
+}
+.home-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 1rem;
+}
+.home-section-header h2 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 0;
+    color: #334155;
+}
+
+.home-tile {
+    display: block;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1.25rem;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.2s;
+    height: 100%;
+}
+.home-tile:hover {
+    border-color: var(--ao-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+.home-tile.enabled {
+    border-color: #d1fae5;
+    background: linear-gradient(180deg, #fff 0%, #f0fdf4 100%);
+}
+.home-tile-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
+}
+.home-tile-name {
+    font-weight: 700;
+    font-size: 0.98rem;
+    color: #0f172a;
+    margin-bottom: 0.25rem;
+}
+.home-tile-stat {
+    font-size: 0.78rem;
+    margin-bottom: 0.75rem;
+    line-height: 1.4;
+    min-height: 2.2em;
+}
+.home-tile-cta {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--ao-primary);
+}
+
+.empty-tile {
+    background: #fff;
+    border: 2px dashed #e5e7eb;
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    color: #64748b;
+}
+
+.activity-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.activity-list-item {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 0.88rem;
+}
+.activity-list-item:last-child { border-bottom: none; }
+
+/* ── Placeholder view (for unembedded platforms) ─────────────────────────── */
+
+.placeholder-view {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 4rem 1.5rem;
+}
+.placeholder-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 18px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    margin-bottom: 1.5rem;
+}
+.placeholder-view h2 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+.placeholder-view .lead {
+    color: #475569;
+    max-width: 540px;
+    margin-bottom: 1.5rem;
+}
+.placeholder-status {
+    background: #fef3c7;
+    color: #a16207;
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+/* ── Settings views (account / billing / activity) ──────────────────────── */
+
+.settings-view .settings-header {
+    margin-bottom: 1.5rem;
+}
+.settings-view .settings-header h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+}
+
+.settings-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+.settings-card.danger {
+    border-color: #fecaca;
+    background: #fef2f2;
+}
+.settings-card h5 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.billing-total {
+    margin-top: 0.5rem;
+}
+.billing-amount {
+    font-size: 2.25rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+

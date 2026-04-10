@@ -51,7 +51,7 @@
             if (!email || !password) { showError('Email and password required.'); return; }
             try {
                 stubLogin({ email, password });
-                window.location.href = next || 'dashboard.html';
+                window.location.href = next || 'index.html';
             } catch (err) {
                 showError(err.message || 'Login failed.');
             }

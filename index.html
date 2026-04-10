@@ -2,29 +2,86 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AlohaOne</title>
-    <script src="js/alohaone.js"></script>
-    <script>
-        // Router: logged in → dashboard, otherwise → login
-        // Preserves any ?next= / ?platform= params through the flow.
-        const params = new URLSearchParams(window.location.search);
-        const platform = params.get('platform');
-        let target;
-        if (getToken()) {
-            // Authenticated — if a platform was requested, jump straight to the enable page.
-            target = platform ? `enable.html?platform=${encodeURIComponent(platform)}` : 'dashboard.html';
-        } else {
-            // Not authenticated — send to register (for new users) or login.
-            // Pass the intended destination through as ?next= so the user lands there after login/register.
-            const intent = params.get('intent') || 'login';  // default to login
-            const page = intent === 'register' ? 'register.html' : 'login.html';
-            const nextUrl = platform ? `enable.html?platform=${encodeURIComponent(platform)}` : 'dashboard.html';
-            target = `${page}?next=${encodeURIComponent(nextUrl)}`;
-        }
-        window.location.replace(target);
-    </script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="css/alohaone.css" rel="stylesheet">
 </head>
-<body>
-    <noscript>JavaScript is required to use AlohaOne.</noscript>
+<body class="app-shell">
+
+<!-- ============================================================
+     TITLE BAR — persistent across all views
+     ============================================================ -->
+<header class="app-titlebar">
+    <a href="#" class="app-brand" id="brand-home" title="Home">
+        <span class="brand-gradient">AlohaOne</span>
+        <span class="brand-flower">🌺</span>
+    </a>
+
+    <div class="dropdown platform-switcher">
+        <button class="btn btn-platform-switcher dropdown-toggle" type="button"
+                id="platformSwitcherBtn" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fas fa-th-large me-2"></i>
+            <span id="current-platform-label">Home</span>
+        </button>
+        <div class="dropdown-menu platform-dropdown-menu" id="platform-dropdown-menu" aria-labelledby="platformSwitcherBtn">
+            <!-- populated by shell.js -->
+        </div>
+    </div>
+
+    <div class="titlebar-actions">
+        <button class="btn btn-titlebar" id="search-btn" title="Search across everything">
+            <i class="fas fa-search"></i>
+        </button>
+        <button class="btn btn-titlebar" id="notifications-btn" title="Notifications">
+            <i class="fas fa-bell"></i>
+            <span class="notification-badge" id="notification-count" style="display:none">0</span>
+        </button>
+        <div class="dropdown account-dropdown">
+            <button class="btn btn-titlebar account-btn dropdown-toggle" type="button"
+                    id="accountBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                <span class="account-avatar" id="account-avatar">?</span>
+                <span class="account-name d-none d-md-inline" id="account-name">Loading…</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="accountBtn">
+                <li><div class="dropdown-header" id="account-header">Loading…</div></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="#" data-view="account"><i class="fas fa-user-gear me-2"></i>Account Settings</a></li>
+                <li><a class="dropdown-item" href="#" data-view="billing"><i class="fas fa-credit-card me-2"></i>Billing &amp; Subscriptions</a></li>
+                <li><a class="dropdown-item" href="#" data-view="activity"><i class="fas fa-clock-rotate-left me-2"></i>Activity Log</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><div class="dropdown-header">Dev role switcher</div></li>
+                <li><a class="dropdown-item role-switch" href="#" data-role="customer"><i class="fas fa-user me-2"></i>View as Customer</a></li>
+                <li><a class="dropdown-item role-switch" href="#" data-role="admin"><i class="fas fa-user-shield me-2"></i>View as System Admin</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item text-danger" href="#" id="logout-link"><i class="fas fa-sign-out-alt me-2"></i>Sign out</a></li>
+            </ul>
+        </div>
+    </div>
+</header>
+
+<!-- ============================================================
+     CONTENT AREA — swaps between native fragments and iframes
+     ============================================================ -->
+<main class="app-content" id="app-content">
+    <div class="app-content-loading">
+        <i class="fas fa-circle-notch fa-spin"></i>
+        <p>Loading your AlohaOne workspace…</p>
+    </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/platforms-data.js"></script>
+<script src="js/alohaone.js"></script>
+<script src="js/shell.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        if (typeof requireAuth === 'function' && !requireAuth()) return;
+        Shell.init();
+    });
+</script>
+
 </body>
 </html>

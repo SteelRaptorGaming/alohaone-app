@@ -1,0 +1,136 @@
+<!--
+  Customer Home — tile grid landing page.
+  Loaded by shell.js into the main content area when role=customer (default).
+  Shows: enabled platforms with quick stats, recent activity, suggested upgrades.
+-->
+<div class="home-view">
+    <div class="home-header">
+        <h1>Welcome back, <span id="home-user-name">friend</span> 🌺</h1>
+        <p class="text-muted mb-0">Your AlohaOne workspace — pick a platform from the title bar to dive in, or use a tile below.</p>
+    </div>
+
+    <!-- ── Your platforms ── -->
+    <section class="home-section">
+        <div class="home-section-header">
+            <h2><i class="fas fa-th-large me-2"></i>Your platforms</h2>
+            <span class="text-muted small" id="enabled-count">0 enabled</span>
+        </div>
+        <div class="row g-3" id="enabled-platforms-grid">
+            <!-- populated by initHomeView -->
+        </div>
+    </section>
+
+    <!-- ── Recent activity ── -->
+    <section class="home-section">
+        <div class="home-section-header">
+            <h2><i class="fas fa-clock-rotate-left me-2"></i>Recent activity</h2>
+            <a href="#" class="small text-decoration-none" data-view="activity">View all →</a>
+        </div>
+        <div id="home-activity-list">
+            <!-- populated by initHomeView -->
+        </div>
+    </section>
+
+    <!-- ── Suggested upgrades / promo ── -->
+    <section class="home-section">
+        <div class="home-section-header">
+            <h2><i class="fas fa-arrow-trend-up me-2"></i>Suggested for you</h2>
+        </div>
+        <div class="row g-3" id="suggested-platforms-grid">
+            <!-- populated by initHomeView -->
+        </div>
+    </section>
+</div>
+
+<script>
+function initHomeView() {
+    const user = (typeof getUser === 'function') ? getUser() : null;
+    if (user) {
+        document.getElementById('home-user-name').textContent = user.displayName || user.email.split('@')[0];
+    }
+
+    if (typeof PLATFORMS === 'undefined') return;
+
+    const enabledSlugs = (typeof getEnabledPlatforms === 'function') ? getEnabledPlatforms() : [];
+    const enabled = PLATFORMS.filter(p => enabledSlugs.includes(p.slug));
+    const available = PLATFORMS.filter(p => !enabledSlugs.includes(p.slug));
+
+    document.getElementById('enabled-count').textContent =
+        enabled.length === 0 ? 'None yet — try one below' :
+        enabled.length === 1 ? '1 enabled' :
+        `${enabled.length} enabled`;
+
+    // ── Enabled platforms grid ───
+    const enabledGrid = document.getElementById('enabled-platforms-grid');
+    if (enabled.length === 0) {
+        enabledGrid.innerHTML = `
+            <div class="col-12">
+                <div class="empty-tile">
+                    <i class="fas fa-plus-circle fa-2x mb-3 opacity-50"></i>
+                    <p class="mb-2"><strong>No platforms enabled yet</strong></p>
+                    <p class="text-muted mb-0">Browse the suggestions below to start building your AlohaOne stack.</p>
+                </div>
+            </div>
+        `;
+    } else {
+        enabledGrid.innerHTML = enabled.map(p => `
+            <div class="col-6 col-md-4 col-lg-3">
+                <a href="#" class="home-tile enabled" data-platform="${p.slug}">
+                    <div class="home-tile-icon" style="background:${p.gradient}">
+                        <i class="fas ${p.icon}"></i>
+                    </div>
+                    <div class="home-tile-name">${p.name}</div>
+                    <div class="home-tile-stat text-muted small">${p.tagline ? p.tagline.substring(0, 60) + (p.tagline.length > 60 ? '…' : '') : ''}</div>
+                    <div class="home-tile-cta">Open →</div>
+                </a>
+            </div>
+        `).join('');
+    }
+
+    // ── Recent activity ───
+    const log = (typeof getActivityLog === 'function') ? getActivityLog() : [];
+    const activityEl = document.getElementById('home-activity-list');
+    if (log.length === 0) {
+        activityEl.innerHTML = `
+            <div class="text-muted text-center py-3">
+                <i class="fas fa-stream me-2"></i>No activity yet. Get started by enabling a platform.
+            </div>
+        `;
+    } else {
+        activityEl.innerHTML = `<ul class="activity-list">` +
+            log.slice(0, 6).map(entry => `
+                <li class="activity-list-item">
+                    <i class="fas fa-circle text-muted me-2" style="font-size:0.4rem;vertical-align:middle"></i>
+                    <strong>${entry.type}</strong>
+                    <span class="text-muted small ms-2">${(typeof formatDateTime === 'function') ? formatDateTime(entry.at) : entry.at}</span>
+                </li>
+            `).join('') +
+            `</ul>`;
+    }
+
+    // ── Suggested upgrades (random subset of available, prioritise live) ───
+    const suggested = available
+        .filter(p => p.status === 'live' || p.status === 'coming')
+        .sort((a, b) => (a.status === 'live' ? -1 : 1) - (b.status === 'live' ? -1 : 1))
+        .slice(0, 4);
+
+    const suggestedGrid = document.getElementById('suggested-platforms-grid');
+    suggestedGrid.innerHTML = suggested.map(p => {
+        const statusBadge = p.status === 'live'
+            ? '<span class="badge bg-success">Available now</span>'
+            : '<span class="badge bg-warning text-dark">Coming soon</span>';
+        return `
+            <div class="col-6 col-md-4 col-lg-3">
+                <a href="#" class="home-tile suggested" data-platform="${p.slug}">
+                    <div class="home-tile-icon" style="background:${p.gradient}">
+                        <i class="fas ${p.icon}"></i>
+                    </div>
+                    <div class="home-tile-name">${p.name}</div>
+                    <div class="home-tile-stat text-muted small">${p.tagline ? p.tagline.substring(0, 60) + (p.tagline.length > 60 ? '…' : '') : ''}</div>
+                    <div class="home-tile-cta">${statusBadge}</div>
+                </a>
+            </div>
+        `;
+    }).join('');
+}
+</script>

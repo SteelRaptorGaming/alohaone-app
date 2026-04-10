@@ -1,0 +1,164 @@
+<!--
+  AlohaOne System Dashboard — mission control for the platform operator.
+  Loaded by shell.js into the main content area when role=admin.
+  Data is currently mocked; real metrics will come from the entitlements
+  and activity APIs when the AlohaCommerce window finishes the backend.
+-->
+<div class="system-dashboard">
+    <div class="dashboard-header">
+        <div>
+            <h1><i class="fas fa-chart-network me-2" style="color:#ec4899"></i>AlohaOne System</h1>
+            <p class="text-muted mb-0">Cross-platform mission control for the AlohaOne ecosystem</p>
+        </div>
+        <div class="dashboard-actions">
+            <span class="badge bg-light text-dark me-2"><i class="fas fa-circle text-success me-1" style="font-size:0.5rem"></i>All systems operational</span>
+            <button class="btn btn-sm btn-outline-secondary"><i class="fas fa-download me-1"></i> Export</button>
+        </div>
+    </div>
+
+    <!-- ── This Month KPIs ── -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="kpi-card">
+                <div class="kpi-icon" style="background:linear-gradient(135deg,#10b981,#059669)"><i class="fas fa-dollar-sign"></i></div>
+                <div class="kpi-value" id="kpi-mrr">$0</div>
+                <div class="kpi-label">MRR this month</div>
+                <div class="kpi-trend text-muted"><i class="fas fa-minus me-1"></i>No data yet</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="kpi-card">
+                <div class="kpi-icon" style="background:linear-gradient(135deg,#3b82f6,#2563eb)"><i class="fas fa-users"></i></div>
+                <div class="kpi-value" id="kpi-subscribers">0</div>
+                <div class="kpi-label">Active subscribers</div>
+                <div class="kpi-trend text-muted"><i class="fas fa-minus me-1"></i>No data yet</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="kpi-card">
+                <div class="kpi-icon" style="background:linear-gradient(135deg,#f59e0b,#d97706)"><i class="fas fa-rocket"></i></div>
+                <div class="kpi-value" id="kpi-conversions">0</div>
+                <div class="kpi-label">Trial → Paid conversions</div>
+                <div class="kpi-trend text-muted"><i class="fas fa-minus me-1"></i>No data yet</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="kpi-card">
+                <div class="kpi-icon" style="background:linear-gradient(135deg,#ef4444,#dc2626)"><i class="fas fa-user-minus"></i></div>
+                <div class="kpi-value" id="kpi-churn">0%</div>
+                <div class="kpi-label">Churn this month</div>
+                <div class="kpi-trend text-muted"><i class="fas fa-minus me-1"></i>No data yet</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Subscribers by Platform ── -->
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-lg-7">
+            <div class="dashboard-card">
+                <div class="dashboard-card-header">
+                    <h5><i class="fas fa-th-large me-2"></i>Subscribers by platform</h5>
+                    <span class="text-muted small">Live count across the ecosystem</span>
+                </div>
+                <div class="dashboard-card-body">
+                    <div id="subscribers-by-platform" class="bar-chart-container">
+                        <div class="bar-chart-empty text-muted text-center py-4">
+                            <i class="fas fa-chart-bar fa-2x mb-2 opacity-50"></i>
+                            <p class="mb-0">Connect the AlohaCommerce backend to see live subscriber counts.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Health Status ── -->
+        <div class="col-12 col-lg-5">
+            <div class="dashboard-card">
+                <div class="dashboard-card-header">
+                    <h5><i class="fas fa-heart-pulse me-2"></i>Platform health</h5>
+                    <span class="text-muted small">Last 5 min</span>
+                </div>
+                <div class="dashboard-card-body">
+                    <ul class="health-list" id="health-list">
+                        <li class="health-item">
+                            <span class="health-name">AlohaCommerce API</span>
+                            <span class="health-status text-muted"><i class="fas fa-circle me-1" style="font-size:0.55rem"></i>Awaiting connection</span>
+                        </li>
+                        <li class="health-item">
+                            <span class="health-name">AlohaOneApp shell</span>
+                            <span class="health-status text-success"><i class="fas fa-circle me-1" style="font-size:0.55rem"></i>Operational</span>
+                        </li>
+                        <li class="health-item">
+                            <span class="health-name">alohaone.ai marketing</span>
+                            <span class="health-status text-success"><i class="fas fa-circle me-1" style="font-size:0.55rem"></i>Operational</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Recent Activity ── -->
+    <div class="row g-3 mb-4">
+        <div class="col-12">
+            <div class="dashboard-card">
+                <div class="dashboard-card-header">
+                    <h5><i class="fas fa-clock-rotate-left me-2"></i>Recent activity</h5>
+                    <a href="#" class="small text-decoration-none" data-view="activity">View all →</a>
+                </div>
+                <div class="dashboard-card-body">
+                    <div id="recent-activity" class="activity-feed">
+                        <div class="activity-empty text-muted text-center py-4">
+                            <i class="fas fa-stream fa-2x mb-2 opacity-50"></i>
+                            <p class="mb-0">Activity will appear here once customers start signing up.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Drill into ── -->
+    <div class="dashboard-card">
+        <div class="dashboard-card-header">
+            <h5><i class="fas fa-arrow-down-wide-short me-2"></i>Drill into a platform</h5>
+        </div>
+        <div class="dashboard-card-body">
+            <div class="row g-2" id="drill-into-grid">
+                <!-- populated by initSystem-dashboardView -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function initSystemDashboardView() {
+    // Populate the activity feed from local activity log if any
+    const log = (typeof getActivityLog === 'function') ? getActivityLog() : [];
+    const feed = document.getElementById('recent-activity');
+    if (log.length > 0) {
+        feed.innerHTML = log.slice(0, 10).map(entry => `
+            <div class="activity-item">
+                <div class="activity-icon"><i class="fas fa-circle-info"></i></div>
+                <div class="activity-body">
+                    <strong>${entry.type}</strong>
+                    <small class="text-muted ms-2">${(typeof formatDateTime === 'function') ? formatDateTime(entry.at) : entry.at}</small>
+                    <div class="activity-detail text-muted small">${JSON.stringify(entry.payload)}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // Build drill-into grid from PLATFORMS catalog
+    const grid = document.getElementById('drill-into-grid');
+    if (typeof PLATFORMS === 'undefined') return;
+    grid.innerHTML = PLATFORMS.filter(p => p.status === 'live').slice(0, 8).map(p => `
+        <div class="col-6 col-md-3">
+            <a href="#" class="drill-tile" data-platform="${p.slug}">
+                <span class="drill-icon" style="background:${p.gradient}"><i class="fas ${p.icon}"></i></span>
+                <span>${p.shortName || p.name}</span>
+            </a>
+        </div>
+    `).join('');
+}
+</script>

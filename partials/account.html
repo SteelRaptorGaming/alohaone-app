@@ -1,0 +1,64 @@
+<div class="settings-view">
+    <div class="settings-header">
+        <h1><i class="fas fa-user-gear me-2"></i>Account Settings</h1>
+        <p class="text-muted">Manage your AlohaOne profile, password, and preferences.</p>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-12 col-lg-7">
+            <div class="settings-card">
+                <h5>Profile</h5>
+                <form id="account-form">
+                    <div class="mb-3">
+                        <label class="form-label">Display name</label>
+                        <input type="text" class="form-control" id="account-display-name">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" id="account-email" disabled>
+                        <small class="text-muted">Email is your AlohaOne identity. Contact support to change it.</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save changes</button>
+                </form>
+            </div>
+
+            <div class="settings-card mt-3">
+                <h5>Password</h5>
+                <p class="text-muted small">Password management is handled by AlohaOne identity (Cognito). Coming once the shared identity pool is wired up.</p>
+                <button class="btn btn-outline-secondary" disabled>Change password</button>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-5">
+            <div class="settings-card danger">
+                <h5 class="text-danger">Danger zone</h5>
+                <p class="text-muted small mb-3">Reset all local data — useful for testing the app from a clean state.</p>
+                <button class="btn btn-outline-danger" id="reset-local-data">Reset local data</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function initAccountView() {
+    const user = (typeof getUser === 'function') ? getUser() : null;
+    if (!user) return;
+    document.getElementById('account-display-name').value = user.displayName || '';
+    document.getElementById('account-email').value = user.email || '';
+
+    document.getElementById('account-form').addEventListener('submit', e => {
+        e.preventDefault();
+        user.displayName = document.getElementById('account-display-name').value;
+        if (typeof setUser === 'function') setUser(user);
+        Shell.init();
+        alert('Saved.');
+    });
+
+    document.getElementById('reset-local-data').addEventListener('click', () => {
+        if (confirm('Reset ALL local AlohaOne data? You will be signed out.')) {
+            localStorage.clear();
+            window.location.href = 'login.html';
+        }
+    });
+}
+</script>
