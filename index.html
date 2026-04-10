@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AlohaOne</title>
+    <script src="js/alohaone.js"></script>
+    <script>
+        // Router: logged in → dashboard, otherwise → login
+        // Preserves any ?next= / ?platform= params through the flow.
+        const params = new URLSearchParams(window.location.search);
+        const platform = params.get('platform');
+        let target;
+        if (getToken()) {
+            // Authenticated — if a platform was requested, jump straight to the enable page.
+            target = platform ? `enable.html?platform=${encodeURIComponent(platform)}` : 'dashboard.html';
+        } else {
+            // Not authenticated — send to register (for new users) or login.
+            // Pass the intended destination through as ?next= so the user lands there after login/register.
+            const intent = params.get('intent') || 'login';  // default to login
+            const page = intent === 'register' ? 'register.html' : 'login.html';
+            const nextUrl = platform ? `enable.html?platform=${encodeURIComponent(platform)}` : 'dashboard.html';
+            target = `${page}?next=${encodeURIComponent(nextUrl)}`;
+        }
+        window.location.replace(target);
+    </script>
+</head>
+<body>
+    <noscript>JavaScript is required to use AlohaOne.</noscript>
+</body>
+</html>

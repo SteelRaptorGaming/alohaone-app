@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Platforms — AlohaOne</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link href="css/alohaone.css" rel="stylesheet">
+</head>
+<body>
+    <div id="sidebar-container"></div>
+
+    <div class="main-content">
+        <div class="top-bar">
+            <h1>Platforms</h1>
+        </div>
+        <div id="alert-area"></div>
+
+        <p class="text-muted mb-4">Enable capabilities on demand. Click any platform to configure and turn it on.</p>
+
+        <h5 class="mb-3 mt-2"><i class="fa-solid fa-circle-check text-success me-2"></i>Available Now</h5>
+        <div class="row g-3 mb-5" id="live-grid"></div>
+
+        <h5 class="mb-3 mt-2"><i class="fa-solid fa-clock text-warning me-2"></i>Coming Soon</h5>
+        <div class="row g-3" id="coming-grid"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/alohaone.js"></script>
+    <script src="js/platforms-data.js"></script>
+    <script>
+        if (requireAuth()) {
+            initAppShell('platforms').then(loadPlatforms);
+        }
+
+        function cardHtml(p) {
+            const isEnabled = isPlatformEnabled(p.slug);
+            const isComing  = p.status === 'coming';
+            let statusBadge;
+            if (isComing)       statusBadge = '<span class="platform-status status-coming">Coming Soon</span>';
+            else if (isEnabled) statusBadge = '<span class="platform-status status-enabled"><i class="fa-solid fa-check me-1"></i>Enabled</span>';
+            else if (p.bundledIn) statusBadge = '<span class="platform-status status-bundled">Bundled</span>';
+            else                statusBadge = '<span class="platform-status status-available">Available</span>';
+
+            return `
+            <div class="col-md-6 col-lg-4">
+                <a href="enable.html?platform=${p.slug}" class="platform-card ${isEnabled ? 'enabled' : ''} d-block text-decoration-none text-dark">
+                    <div class="platform-icon" style="background:${p.gradient}">
+                        <i class="fa-solid ${p.icon}"></i>
+                    </div>
+                    <h5>${p.name}</h5>
+                    <p class="platform-tagline">${p.tagline}</p>
+                    ${statusBadge}
+                </a>
+            </div>`;
+        }
+
+        function loadPlatforms() {
+            $('#live-grid').innerHTML   = getLivePlatforms().map(cardHtml).join('');
+            $('#coming-grid').innerHTML = getComingPlatforms().map(cardHtml).join('');
+        }
+    </script>
+</body>
+</html>
