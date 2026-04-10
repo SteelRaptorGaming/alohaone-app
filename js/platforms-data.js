@@ -170,6 +170,7 @@ const PLATFORMS = [
 
     // ---------- Coming Soon ----------
     { slug: 'drive',        name: 'AlohaDrive',        shortName: 'Drive',        icon: 'fa-cloud',           color: '#60a5fa', gradient: 'linear-gradient(135deg,#60a5fa,#1e40af)', status: 'coming', tagline: 'Business cloud storage with virtual-disk Mount and team folder collaboration.' },
+    { slug: 'cms',          name: 'AlohaCMS',          shortName: 'CMS',          icon: 'fa-window-maximize', color: '#fb7185', gradient: 'linear-gradient(135deg,#fb7185,#be123c)', status: 'coming', tagline: 'Modern website builder paired bidirectionally with AlohaCommerce.' },
     { slug: 'deliver',      name: 'AlohaDeliver',      shortName: 'Deliver',      icon: 'fa-truck-fast',      color: '#f97316', gradient: 'linear-gradient(135deg,#f97316,#c2410c)', status: 'coming', tagline: 'Last-mile delivery with photo/video proof and notifications.' },
     { slug: 'marketing',    name: 'AlohaMarketing',    shortName: 'Marketing',    icon: 'fa-bullhorn',        color: '#f97316', gradient: 'linear-gradient(135deg,#f97316,#ea580c)', status: 'coming', tagline: 'Campaign orchestration, journey builder, and analytics.' },
     { slug: 'social',       name: 'AlohaSocial',       shortName: 'Social',       icon: 'fa-share-nodes',     color: '#ec4899', gradient: 'linear-gradient(135deg,#ec4899,#be185d)', status: 'coming', tagline: 'One composer for every social network.' },
