@@ -62,7 +62,19 @@ async function getBrowser() {
         browser = await puppeteer.launch({
             headless: HEADLESS,
             slowMo: SLOW_MO,
-            args: ['--no-sandbox', '--disable-setuid-sandbox', '--window-size=1440,900'],
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--window-size=1440,900',
+                // Allow http iframes inside https parent so we can test the
+                // Commerce admin embed against the deployed shell. The Commerce
+                // admin S3 website endpoint is http-only until CloudFront is
+                // put in front of it (filed as a follow-up to the AlohaCommerce
+                // window). Real users will need that CloudFront before the
+                // embed works in a normal browser.
+                '--allow-running-insecure-content',
+                '--disable-features=BlockInsecurePrivateNetworkRequests',
+            ],
             defaultViewport: { width: 1440, height: 900 },
         });
     }

@@ -18,6 +18,7 @@ const helpers = require('./test-helpers');
 // Suites to run, in order. Each module exports a `run()` function.
 const SUITES = [
     { name: 'Shell',           module: './test-shell' },
+    { name: 'Iframe embed',    module: './test-iframe-embed' },
     // Add more suites here as they're written:
     // { name: 'Home view',       module: './test-home-view' },
     // { name: 'System dashboard',module: './test-system-dashboard' },
