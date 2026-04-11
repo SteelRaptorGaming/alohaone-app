@@ -184,6 +184,7 @@ const PLATFORMS = [
     { slug: 'project',      name: 'AlohaProject',      shortName: 'Project',      icon: 'fa-diagram-project', color: '#6366f1', gradient: 'linear-gradient(135deg,#6366f1,#4f46e5)', status: 'coming', tagline: 'Project management with boards, sprints, and roadmaps.' },
     { slug: 'data',         name: 'AlohaData',         shortName: 'Data',         icon: 'fa-database',        color: '#0ea5e9', gradient: 'linear-gradient(135deg,#0ea5e9,#0369a1)', status: 'coming', tagline: 'Data warehouse as a service with SQL workbench.' },
     { slug: 'agent',        name: 'AlohaAgent',        shortName: 'Agent',        icon: 'fa-robot',           color: '#a855f7', gradient: 'linear-gradient(135deg,#a855f7,#7e22ce)', status: 'coming', tagline: 'AI agents that work across every platform.' },
+    { slug: 'browser',      name: 'AlohaBrowser',      shortName: 'Browser',      icon: 'fa-compass',         color: '#38bdf8', gradient: 'linear-gradient(135deg,#38bdf8,#0284c7)', status: 'coming', tagline: 'Kid-safe browser with curated allowlist and parent dashboard.' },
 ];
 
 function getPlatform(slug) {
