@@ -14,7 +14,12 @@ const Shell = (function() {
     // implementing ?embedded=1 mode on the relevant pages. For now, slugs
     // without an embed_url show a "Coming soon" placeholder.
     const PLATFORM_EMBED_URLS = {
-        commerce: 'http://alohacommerce-dev-admin-7ff98c81.s3-website-us-east-1.amazonaws.com/dashboard.html?embedded=1',
+        // Use the S3 REST endpoint (https) rather than the website endpoint (http)
+        // so the iframe isn't blocked by Chrome's mixed-content policy when
+        // AlohaOneApp is served over HTTPS. The REST endpoint serves static files
+        // from a public bucket; all Commerce admin pages are explicit .html names
+        // so we don't need the website endpoint's directory→index.html redirect.
+        commerce: 'https://alohacommerce-dev-admin-7ff98c81.s3.us-east-1.amazonaws.com/dashboard.html?embedded=1',
         // Other platforms get added here as their embed support lands.
     };
 
@@ -209,16 +214,24 @@ const Shell = (function() {
 
     function loadEmbeddedView(slug) {
         const platform = (typeof PLATFORMS !== 'undefined') ? PLATFORMS.find(p => p.slug === slug) : null;
-        const url = PLATFORM_EMBED_URLS[slug];
+        const baseUrl = PLATFORM_EMBED_URLS[slug];
         const content = document.getElementById('app-content');
         content.classList.remove('app-content-native');
         content.classList.add('app-content-embedded');
 
         updateLabel(platform ? platform.name : slug);
 
+        // Cross-origin SSO handoff: append the Cognito IdToken as a URL fragment.
+        // Fragments aren't sent to the server and don't appear in Referer headers,
+        // so this is safer than a query string. The Commerce admin page reads
+        // window.location.hash on load, stashes the token in its own localStorage,
+        // then strips the fragment via history.replaceState.
+        const token = getToken();
+        const src = token ? `${baseUrl}#token=${encodeURIComponent(token)}` : baseUrl;
+
         content.innerHTML = `
             <iframe id="platform-iframe"
-                    src="${url}"
+                    src="${src}"
                     title="${platform ? platform.name : slug}"
                     frameborder="0"
                     allow="clipboard-read; clipboard-write; fullscreen"></iframe>

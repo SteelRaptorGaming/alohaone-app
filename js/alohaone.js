@@ -1,11 +1,16 @@
 // =============================================================================
 // AlohaOne App — Shared utilities
-// Auth is stubbed with localStorage until shared Cognito pool is wired up.
+// Real auth via the shared Cognito user pool (us-east-1_25nTKMaY4). Login and
+// register flows live in login.html / register.html and call Cognito directly;
+// this file is just storage + session helpers used by the rest of the shell.
 // =============================================================================
 
-const ALOHAONE_VERSION = '0.1.0';
+const ALOHAONE_VERSION = '0.2.0';
 
-// --- Auth / User state (localStorage stub) ---
+// --- Auth / User state (Cognito IdToken in localStorage) ---
+// Token is the raw Cognito IdToken (JWT). The shell passes this into Commerce
+// iframes via a URL fragment so cross-origin children can authenticate without
+// a second login round-trip.
 
 function getToken() { return localStorage.getItem('ao_token'); }
 function setToken(t) { localStorage.setItem('ao_token', t); }
@@ -19,6 +24,9 @@ function setUser(u) { localStorage.setItem('ao_user', JSON.stringify(u)); }
 function clearSession() {
     localStorage.removeItem('ao_token');
     localStorage.removeItem('ao_user');
+    localStorage.removeItem('ao_role');
+    localStorage.removeItem('ao_enabled_platforms');
+    localStorage.removeItem('ao_enabled_capabilities');
 }
 
 function logout() {
@@ -40,45 +48,32 @@ function requireAuth() {
 }
 
 /**
- * Stubbed "register" — creates a local user and a token.
- * Replace with a real Cognito/API call when the backend is ready.
+ * Post-login provisioning: calls AlohaCommerce's /api/auth/sync cross-origin
+ * so a brand-new user gets their organization + default store + StoreAdmin
+ * role created in the commerce.* schema. Idempotent server-side (returning
+ * users get last_login_at bumped and nothing else).
+ *
+ * Non-fatal. A failure here shouldn't block the user from entering the shell;
+ * worst case they re-hit sync the first time they open the Commerce iframe.
  */
-function stubRegister({ email, displayName, password }) {
-    // In a real app we'd POST to an API. For now, simulate success.
-    const user = {
-        email,
-        displayName: displayName || email.split('@')[0],
-        createdAt: new Date().toISOString(),
-        plan: 'free',
-    };
-    setUser(user);
-    setToken('stub-' + Math.random().toString(36).slice(2));
-    // Initialize empty enabled-platforms list for a fresh account
-    if (!localStorage.getItem('ao_enabled_platforms')) {
-        localStorage.setItem('ao_enabled_platforms', JSON.stringify([]));
+async function provisionCommerce() {
+    const cfg = window.ALOHAONE_CONFIG;
+    const token = getToken();
+    if (!cfg || !token) return;
+    try {
+        const r = await fetch(cfg.COMMERCE_API_BASE + '/api/auth/sync', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        });
+        if (!r.ok) {
+            console.warn('[provisionCommerce] non-200:', r.status, await r.text());
+        }
+    } catch (err) {
+        console.warn('[provisionCommerce] failed:', err);
     }
-    logActivity('account.registered', { email });
-    return user;
-}
-
-/**
- * Stubbed "login" — accepts any email/password and creates a session.
- */
-function stubLogin({ email, password }) {
-    // In a real app, we'd validate credentials server-side.
-    let user = getUser();
-    if (!user || user.email !== email) {
-        user = {
-            email,
-            displayName: email.split('@')[0],
-            createdAt: new Date().toISOString(),
-            plan: 'free',
-        };
-    }
-    setUser(user);
-    setToken('stub-' + Math.random().toString(36).slice(2));
-    logActivity('account.login', { email });
-    return user;
 }
 
 // --- Enabled platforms (per-account feature toggles) ---
