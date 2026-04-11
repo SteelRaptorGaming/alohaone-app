@@ -57,7 +57,7 @@
         </form>
 
         <div class="auth-footer">
-            Already have an account? <a href="#" id="link-login">Sign in</a>
+            Already have an account? <a href="#" id="link-login">Sign in here</a>
         </div>
     </div>
 
@@ -69,10 +69,10 @@
         let pendingEmail = '';
         let pendingPassword = '';
 
-        // Preserve ?next= across pages
-        const next = qs('next');
-        const loginHref = next ? `login.html?next=${encodeURIComponent(next)}` : 'login.html';
-        $('#link-login').href = loginHref;
+        // Forward the entire query string to the login page so parameters
+        // like ?platform=commerce&tier=pro survive the bounce between pages.
+        const fullQuery = window.location.search || '';
+        $('#link-login').href = 'login.html' + fullQuery;
 
         function showForm(which) {
             $('#register-form').style.display = which === 'register' ? '' : 'none';
@@ -170,9 +170,9 @@
         });
 
         // Sign in immediately after successful registration + verification,
-        // then land at `next` or the default home page. This is the only place
-        // we auto-login from register.html — users with pre-existing accounts
-        // go through login.html normally.
+        // then dispatch on ?platform= / ?tier= / ?next= params. This is the only
+        // place we auto-login from register.html — users with pre-existing
+        // accounts go through login.html normally.
         async function autoLoginAndRedirect(email, password) {
             try {
                 const auth = await cognitoCall('InitiateAuth', {
@@ -187,11 +187,11 @@
                 // Non-fatal if it fails — the user can still log in and poke around.
                 await provisionCommerce();
 
-                window.location.href = next || 'index.html';
+                redirectPostAuth();
             } catch (err) {
-                // If auto-login fails for any reason, send user to login page.
+                // If auto-login fails for any reason, send user back to login.
                 showError('Signed up successfully, but auto-login failed: ' + err.message);
-                setTimeout(() => window.location.href = loginHref, 2000);
+                setTimeout(() => window.location.href = 'login.html' + fullQuery, 2000);
             }
         }
     </script>

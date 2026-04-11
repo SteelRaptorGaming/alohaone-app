@@ -48,6 +48,76 @@ function requireAuth() {
 }
 
 /**
+ * Post-auth dispatch. Called by login.html and register.html after a
+ * successful authentication. Handles every meaningful query parameter:
+ *
+ *   ?next=<url>      — Highest priority. If next is a full URL (http/https),
+ *                      hand off cross-origin with #token=<IdToken> so the
+ *                      target page can stash it. Same-origin next is a simple
+ *                      path redirect.
+ *
+ *   ?platform=<slug> — Land directly in that platform view in the shell
+ *                      instead of the default home. Passed through as
+ *                      index.html?platform=<slug> and consumed by shell.js.
+ *
+ *   ?tier=<code>     — Stashed in localStorage (`ao_intended_tier`) for any
+ *                      downstream pricing flow that wants to pre-select.
+ *
+ *   ?intent=<word>   — Purely informational; ignored at dispatch time. The
+ *                      marketing site uses it to tell login/register apart
+ *                      but once you're past auth it doesn't matter.
+ *
+ * Anything else is dropped. If no meaningful params are present, land at
+ * the shell home.
+ */
+function redirectPostAuth() {
+    const params = new URLSearchParams(window.location.search);
+    const next = params.get('next');
+    const platform = params.get('platform');
+    const tier = params.get('tier');
+    const token = getToken();
+
+    if (tier) {
+        localStorage.setItem('ao_intended_tier', tier);
+    }
+
+    // 1. Cross-origin next takes precedence — hand off the IdToken via
+    // URL fragment (same trick the shell uses for iframe embeds). The
+    // target origin's page-load JS is responsible for reading the fragment
+    // and stashing it as its own session token.
+    if (next && /^https?:\/\//i.test(next)) {
+        try {
+            const u = new URL(next);
+            // Preserve platform/tier in the hand-off URL too, in case the
+            // target page wants them.
+            if (platform) u.searchParams.set('platform', platform);
+            if (tier) u.searchParams.set('tier', tier);
+            u.hash = 'token=' + encodeURIComponent(token || '');
+            window.location.href = u.toString();
+            return;
+        } catch (e) {
+            console.warn('[redirectPostAuth] bad next URL:', next, e);
+        }
+    }
+
+    // 2. Same-origin next — relative path, just redirect to it.
+    if (next && next.startsWith('/')) {
+        window.location.href = next + (platform ? '?platform=' + encodeURIComponent(platform) : '');
+        return;
+    }
+
+    // 3. Platform specified but no next — land in the shell with the
+    // platform as a query so shell.js auto-opens that iframe.
+    if (platform) {
+        window.location.href = 'index.html?platform=' + encodeURIComponent(platform);
+        return;
+    }
+
+    // 4. Nothing special — default home.
+    window.location.href = 'index.html';
+}
+
+/**
  * Post-login provisioning: calls AlohaCommerce's /api/auth/sync cross-origin
  * so a brand-new user gets their organization + default store + StoreAdmin
  * role created in the commerce.* schema. Idempotent server-side (returning

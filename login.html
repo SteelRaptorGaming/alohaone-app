@@ -31,7 +31,7 @@
         </form>
 
         <div class="auth-footer">
-            Don't have an account? <a href="#" id="link-register">Register now</a>
+            Don't have an account? <a href="#" id="link-register">Register here</a>
         </div>
     </div>
 
@@ -41,14 +41,15 @@
     <script>
         const CFG = window.ALOHAONE_CONFIG;
 
-        // Preserve ?next= through to register if user clicks the link
-        const next = qs('next');
-        const registerHref = next ? `register.html?next=${encodeURIComponent(next)}` : 'register.html';
-        $('#link-register').href = registerHref;
+        // Forward the entire query string to the register page so parameters
+        // like ?platform=commerce&tier=pro&intent=register survive the bounce
+        // between login and register.
+        const fullQuery = window.location.search || '';
+        $('#link-register').href = 'register.html' + fullQuery;
 
-        // Already logged in? Skip straight to the shell (or wherever ?next= points).
+        // Already logged in? Process any post-auth params and redirect.
         if (getToken()) {
-            window.location.href = next || 'index.html';
+            redirectPostAuth();
         }
 
         async function cognitoCall(target, body) {
@@ -105,7 +106,7 @@
                 // calls just update last_login_at.
                 await provisionCommerce();
 
-                window.location.href = next || 'index.html';
+                redirectPostAuth();
             } catch (err) {
                 showError(err.message || 'Login failed.');
                 $('#btn-login').disabled = false; $('#btn-login').textContent = 'Sign In';

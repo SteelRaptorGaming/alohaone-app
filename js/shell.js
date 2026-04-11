@@ -50,9 +50,16 @@ const Shell = (function() {
         renderPlatformDropdown();
         wireEventHandlers();
 
-        // Default view: System Dashboard for admins, Home for customers
+        // A freshly-authenticated user arriving from login/register with
+        // ?platform=<slug> should land directly in that platform's view,
+        // not the shell's default home. The param is set by redirectPostAuth
+        // in alohaone.js. Falls back to System Dashboard (admin) or Home
+        // (customer) when no platform is specified.
+        const params = new URLSearchParams(window.location.search);
+        const requestedPlatform = params.get('platform');
         const defaultView = role === 'admin' ? 'system-dashboard' : 'home';
-        loadView(defaultView);
+        const initialView = requestedPlatform || defaultView;
+        loadView(initialView);
     }
 
     function detectRoleFromUser(user) {
