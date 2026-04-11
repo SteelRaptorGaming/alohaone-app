@@ -27,12 +27,10 @@ const AWS_REGION      = process.env.AWS_REGION      || 'us-east-1';
 const stamp = Date.now();
 const TEST_EMAIL = `e2e-auth-${stamp}@test.alohaone.ai`;
 const TEST_PASS  = 'Aloha.E2E.' + stamp;
-// Per-run unique name so the provisioner's "{first}-{last}-org" slug
-// doesn't collide with left-over rows from earlier runs. The current
-// /api/auth/sync has a known weakness around colliding names (e.g.
-// two real "Alice Smith"s registering years apart); this just avoids
-// re-tripping it inside a single test run cycle.
-const TEST_FIRST = 'Auth' + stamp.toString().slice(-6);
+// Stable first/last — every run uses the same name. The provisioner now
+// builds org/store slugs from the newly-allocated numeric id (`org-{id}`,
+// `website-{id}`), so duplicate display names across runs are fine.
+const TEST_FIRST = 'Auth';
 const TEST_LAST  = 'Bot';
 
 let passed = 0;
