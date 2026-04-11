@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>AlohaOneApp.Api</RootNamespace>
+    <AssemblyName>AlohaOneApp.Api</AssemblyName>
+    <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
+    <AWSProjectType>Lambda</AWSProjectType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Shared library: auth, tenancy, db, audit, S3, webhooks, notifications -->
+    <ProjectReference Include="..\..\..\AlohaCore\Aloha.Core\Aloha.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Lambda hosting -->
+    <PackageReference Include="Amazon.Lambda.AspNetCoreServer.Hosting" Version="1.10.0" />
+    <!-- AWS SDK extras not in AlohaCore -->
+    <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="4.0.3.23" />
+    <!-- Direct Dapper for endpoint queries -->
+    <PackageReference Include="Dapper" Version="2.1.72" />
+    <PackageReference Include="Npgsql" Version="8.0.6" />
+  </ItemGroup>
+</Project>
