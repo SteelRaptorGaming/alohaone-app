@@ -1,35 +1,81 @@
 <div class="settings-view">
     <div class="settings-header">
         <h1><i class="fas fa-clock-rotate-left me-2"></i>Activity Log</h1>
-        <p class="text-muted">Every account event, in reverse chronological order.</p>
+        <p class="text-muted">Every account event from across the AlohaOne ecosystem, in reverse chronological order.</p>
     </div>
 
     <div class="settings-card">
         <div id="activity-feed-full">
-            <!-- populated by initActivityView -->
+            <div class="text-center text-muted py-4">
+                <i class="fas fa-spinner fa-spin me-2"></i>Loading activity…
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-function initActivityView() {
-    const log = (typeof getActivityLog === 'function') ? getActivityLog() : [];
+async function initActivityView() {
+    const cfg = window.ALOHAONE_CONFIG;
+    const token = (typeof getToken === 'function') ? getToken() : null;
     const el = document.getElementById('activity-feed-full');
-    if (log.length === 0) {
+    if (!cfg || !token) { el.innerHTML = ''; return; }
+
+    try {
+        const r = await fetch(cfg.COMMERCE_API_BASE + '/api/audit/me?limit=100', {
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+        });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const rows = await r.json();
+
+        if (!rows || rows.length === 0) {
+            el.innerHTML = `
+                <div class="empty-state-small text-muted text-center py-4">
+                    <i class="fas fa-stream me-2"></i>No activity recorded yet.
+                </div>`;
+            return;
+        }
+
+        el.innerHTML = `<table class="table table-hover">
+            <thead><tr><th>Event</th><th>Platform</th><th>Details</th><th>When</th></tr></thead>
+            <tbody>` +
+            rows.map(entry => `<tr>
+                <td>${formatEventLabel(entry.event_type)}</td>
+                <td class="text-muted small">${entry.platform || '—'}</td>
+                <td class="text-muted small" style="max-width:380px">${formatDetails(entry.details)}</td>
+                <td class="text-muted small">${(typeof formatDateTime === 'function') ? formatDateTime(entry.created_at) : entry.created_at}</td>
+            </tr>`).join('') +
+            `</tbody></table>`;
+    } catch (err) {
         el.innerHTML = `
-            <div class="empty-state-small text-muted text-center py-4">
-                <i class="fas fa-stream me-2"></i>No activity recorded yet.
+            <div class="alert alert-warning small">
+                Could not load activity: ${err.message || err}
             </div>`;
-        return;
     }
-    el.innerHTML = `<table class="table table-hover">
-        <thead><tr><th>Event</th><th>Details</th><th>When</th></tr></thead>
-        <tbody>` +
-        log.map(entry => `<tr>
-            <td><code>${entry.type}</code></td>
-            <td class="text-muted small">${JSON.stringify(entry.payload)}</td>
-            <td class="text-muted small">${(typeof formatDateTime === 'function') ? formatDateTime(entry.at) : entry.at}</td>
-        </tr>`).join('') +
-        `</tbody></table>`;
+}
+
+// Friendly labels for known event types; falls back to the raw code.
+function formatEventLabel(eventType) {
+    const labels = {
+        'user.registered':       '<span class="badge bg-success">Registered</span>',
+        'user.login':            '<span class="badge bg-secondary">Signed in</span>',
+        'user.profile_updated':  '<span class="badge bg-info">Profile updated</span>',
+    };
+    return labels[eventType] || ('<code>' + eventType + '</code>');
+}
+
+// Compact JSON preview of the details column.
+function formatDetails(details) {
+    if (!details) return '';
+    try {
+        const obj = typeof details === 'string' ? JSON.parse(details) : details;
+        const parts = [];
+        if (obj.storeName) parts.push('store: ' + obj.storeName);
+        if (obj.email)     parts.push(obj.email);
+        if (obj.firstName || obj.FirstName) parts.push('name: ' + (obj.firstName || obj.FirstName));
+        if (parts.length === 0) return '<code class="small">' + JSON.stringify(obj).substring(0, 120) + '</code>';
+        return parts.join(' · ');
+    } catch {
+        return '';
+    }
 }
 </script>

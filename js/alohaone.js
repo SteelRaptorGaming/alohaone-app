@@ -123,6 +123,11 @@ function redirectPostAuth() {
  * role created in the commerce.* schema. Idempotent server-side (returning
  * users get last_login_at bumped and nothing else).
  *
+ * If the response shape says `existing=false`, treat this as a first-ever
+ * login and seed the shell's enabled platforms with both Commerce and
+ * Backup. Backup auto-provisions its own `backup.accounts` row on the
+ * backup API's sync; we just need the shell to *show* the tile.
+ *
  * Non-fatal. A failure here shouldn't block the user from entering the shell;
  * worst case they re-hit sync the first time they open the Commerce iframe.
  */
@@ -140,6 +145,16 @@ async function provisionCommerce() {
         });
         if (!r.ok) {
             console.warn('[provisionCommerce] non-200:', r.status, await r.text());
+            return;
+        }
+        const body = await r.json().catch(() => null);
+        // Brand-new user: pre-seed the shell's platform tiles so they see
+        // Commerce AND Backup lit up on first landing, not an empty grid.
+        // Both platforms auto-provision their own DB rows, so this is
+        // purely a UX affordance — no server-side effect.
+        if (body && body.existing === false) {
+            enablePlatform('commerce');
+            enablePlatform('backup');
         }
     } catch (err) {
         console.warn('[provisionCommerce] failed:', err);
