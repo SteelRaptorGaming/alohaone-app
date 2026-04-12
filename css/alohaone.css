@@ -974,3 +974,103 @@ body {
     color: #0f172a;
 }
 
+/* =============================================================================
+   APP SHELL — mobile / narrow viewport
+   Everything below is gated on max-width: 768px (tablet portrait and down).
+   The earlier "legacy MPA" block at line ~425 is for the old full-page admin
+   layouts; these rules are specifically for the shell at index.html and its
+   partials.
+   ============================================================================= */
+
+@media (max-width: 768px) {
+    /* ── Title bar: drop fixed min-widths, hide secondary controls ──────── */
+
+    .app-titlebar {
+        padding: 0 0.75rem;
+        gap: 0.5rem;
+        flex-wrap: nowrap;
+    }
+
+    .app-titlebar .app-brand {
+        font-size: 1.15rem;
+    }
+
+    /* Platform switcher is the primary nav element — keep it, but let it
+       shrink to whatever width is left after the brand and account avatar. */
+    .platform-switcher {
+        flex: 1 1 auto;
+        min-width: 0;
+        margin-left: 0.25rem;
+    }
+    .btn-platform-switcher {
+        min-width: 0;
+        width: 100%;
+        padding: 0.4rem 0.65rem;
+        font-size: 0.85rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .platform-dropdown-menu {
+        min-width: 0;
+        width: calc(100vw - 1.5rem);
+        max-width: 360px;
+    }
+
+    /* Hide search + notifications on mobile — title bar real estate is
+       too scarce. They can come back as a "..." menu in a future pass. */
+    #search-btn, #notifications-btn, .titlebar-search, .titlebar-notifications {
+        display: none !important;
+    }
+
+    /* Account avatar stays visible but shrinks a touch. */
+    .app-titlebar .account-btn,
+    .app-titlebar #accountBtn {
+        padding: 0.25rem 0.4rem;
+        min-width: 0;
+    }
+    .app-titlebar .account-avatar {
+        width: 32px;
+        height: 32px;
+    }
+    .app-titlebar .account-name-text {
+        display: none;
+    }
+
+    /* ── Content area: reduce outer padding so partials get more room ───── */
+
+    .app-content {
+        padding: 0;
+    }
+    .app-content-native .native-view-wrap {
+        padding: 1rem;
+        max-width: 100%;
+    }
+
+    /* Home view tiles: force a single-column layout so the 2-col grid on
+       desktop doesn't blow out horizontally. */
+    .home-view .platform-grid,
+    .home-view .tile-grid,
+    .native-view-wrap .row {
+        row-gap: 1rem;
+    }
+    .native-view-wrap [class*="col-md-"],
+    .native-view-wrap [class*="col-lg-"] {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+
+    /* Settings cards and other card-style blocks: full width, less padding. */
+    .settings-card {
+        padding: 1rem;
+    }
+
+    /* Embedded platform iframe: full bleed on mobile. The content INSIDE
+       the iframe (Commerce admin) has its own mobile story — that's the
+       alohacommerce-admin/css/alohacommerce.css mobile pass, a separate
+       commit. Here we just make sure the iframe itself fits. */
+    #platform-iframe {
+        width: 100% !important;
+        height: calc(100vh - 60px) !important;
+    }
+}
