@@ -53,6 +53,17 @@ function adminConfirmUser(email) {
         `aws cognito-idp admin-confirm-sign-up --user-pool-id ${COGNITO_POOL_ID} --username "${email}" --region ${AWS_REGION}`,
         { stdio: 'inherit' }
     );
+    // Also mark email_verified=true to match what a real ConfirmSignUp-with-code
+    // would do. AdminConfirmSignUp alone leaves email_verified=false, which
+    // breaks downstream flows like ForgotPassword.
+    execSync(
+        `aws cognito-idp admin-update-user-attributes ` +
+        `--user-pool-id ${COGNITO_POOL_ID} ` +
+        `--username "${email}" ` +
+        `--user-attributes Name=email_verified,Value=true ` +
+        `--region ${AWS_REGION}`,
+        { stdio: 'inherit' }
+    );
 }
 
 function adminDeleteUser(email) {

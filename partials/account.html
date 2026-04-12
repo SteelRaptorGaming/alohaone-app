@@ -35,16 +35,45 @@
 
             <div class="settings-card mt-3">
                 <h5>Password</h5>
-                <p class="text-muted small">Password management is handled by AlohaOne identity (Cognito). Coming in Phase B of the lifecycle roadmap — forgot-password + change-password flows.</p>
-                <button class="btn btn-outline-secondary" disabled>Change password</button>
+                <div id="password-alert"></div>
+                <form id="password-form">
+                    <div class="mb-3">
+                        <label class="form-label">Current password</label>
+                        <input type="password" class="form-control" id="current-password" required autocomplete="current-password">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">New password</label>
+                        <input type="password" class="form-control" id="new-password" required minlength="8" autocomplete="new-password">
+                        <div class="form-text">Minimum 8 characters, uppercase, lowercase, number.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Confirm new password</label>
+                        <input type="password" class="form-control" id="confirm-password" required minlength="8" autocomplete="new-password">
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="password-save-btn">Change password</button>
+                </form>
             </div>
         </div>
 
         <div class="col-12 col-lg-5">
-            <div class="settings-card danger">
+            <div class="settings-card">
+                <h5>Sessions</h5>
+                <p class="text-muted small mb-3">Sign out here and on every other device and browser where you're currently signed in.</p>
+                <button class="btn btn-outline-secondary" id="sign-out-everywhere">Sign out everywhere</button>
+            </div>
+
+            <div class="settings-card danger mt-3">
                 <h5 class="text-danger">Danger zone</h5>
                 <p class="text-muted small mb-3">Reset all local data — useful for testing the app from a clean state.</p>
-                <button class="btn btn-outline-danger" id="reset-local-data">Reset local data</button>
+                <button class="btn btn-outline-warning mb-3" id="reset-local-data">Reset local data</button>
+
+                <hr>
+
+                <p class="text-muted small mb-3">
+                    Delete your AlohaOne account, all platform data, and your Cognito
+                    identity. <strong class="text-danger">This cannot be undone.</strong>
+                </p>
+                <button class="btn btn-outline-danger" id="delete-account">Delete my account</button>
             </div>
         </div>
     </div>
@@ -122,6 +151,95 @@ async function initAccountView() {
         if (confirm('Reset ALL local AlohaOne data? You will be signed out.')) {
             localStorage.clear();
             window.location.href = 'login.html';
+        }
+    });
+
+    // ── Change password ────────────────────────────────────────────────────
+    function showPasswordAlert(type, msg) {
+        document.getElementById('password-alert').innerHTML =
+            '<div class="alert alert-' + type + ' py-2 small mb-3">' + msg + '</div>';
+    }
+
+    document.getElementById('password-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('password-save-btn');
+        const currentPw = document.getElementById('current-password').value;
+        const newPw     = document.getElementById('new-password').value;
+        const confirmPw = document.getElementById('confirm-password').value;
+
+        if (newPw !== confirmPw) {
+            showPasswordAlert('danger', 'New password and confirmation do not match.');
+            return;
+        }
+        const accessToken = (typeof getAccessToken === 'function') ? getAccessToken() : null;
+        if (!accessToken) {
+            showPasswordAlert('danger', 'Your session is missing an access token. Sign out and sign in again.');
+            return;
+        }
+
+        btn.disabled = true; btn.textContent = 'Saving…';
+        try {
+            const r = await fetch(cfg.COGNITO_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-amz-json-1.1',
+                    'X-Amz-Target': 'AWSCognitoIdentityProviderService.ChangePassword'
+                },
+                body: JSON.stringify({
+                    AccessToken: accessToken,
+                    PreviousPassword: currentPw,
+                    ProposedPassword: newPw
+                })
+            });
+            if (!r.ok) {
+                const err = await r.json().catch(() => ({}));
+                throw new Error(err.message || err.__type || 'Change failed');
+            }
+            document.getElementById('current-password').value = '';
+            document.getElementById('new-password').value = '';
+            document.getElementById('confirm-password').value = '';
+            showPasswordAlert('success', 'Password updated. Other devices stay signed in until you "Sign out everywhere".');
+        } catch (err) {
+            showPasswordAlert('danger', 'Could not change password: ' + (err.message || err));
+        } finally {
+            btn.disabled = false; btn.textContent = 'Change password';
+        }
+    });
+
+    // ── Sign out everywhere ────────────────────────────────────────────────
+    document.getElementById('sign-out-everywhere').addEventListener('click', async () => {
+        if (!confirm('Sign out here and every other session on every other device?')) return;
+        // logout() in alohaone.js already calls Cognito GlobalSignOut with the
+        // stored access token before clearing session and redirecting.
+        await logout();
+    });
+
+    // ── Delete account ─────────────────────────────────────────────────────
+    document.getElementById('delete-account').addEventListener('click', async () => {
+        const confirmation = prompt(
+            'Type DELETE to confirm. This cannot be undone. Your AlohaOne account, ' +
+            'every platform store, backup account, and identity will be deleted.'
+        );
+        if (confirmation !== 'DELETE') return;
+
+        const btn = document.getElementById('delete-account');
+        btn.disabled = true; btn.textContent = 'Deleting…';
+        try {
+            const r = await fetch(cfg.COMMERCE_API_BASE + '/api/users/me', {
+                method: 'DELETE',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+            });
+            if (!r.ok) {
+                const err = await r.json().catch(() => ({}));
+                throw new Error(err.error || 'HTTP ' + r.status);
+            }
+            // Account is gone. Clear everything and bounce to login.
+            localStorage.clear();
+            alert('Your AlohaOne account has been deleted.');
+            window.location.href = 'login.html';
+        } catch (err) {
+            alert('Could not delete account: ' + (err.message || err));
+            btn.disabled = false; btn.textContent = 'Delete my account';
         }
     });
 }

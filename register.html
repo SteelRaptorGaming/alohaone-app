@@ -180,7 +180,7 @@
                     ClientId: CFG.COGNITO_CLIENT_ID,
                     AuthParameters: { USERNAME: email, PASSWORD: password }
                 });
-                setToken(auth.AuthenticationResult.IdToken);
+                setAuthTokens(auth.AuthenticationResult);
                 setUser({ email, displayName: email.split('@')[0] });
 
                 // Provision the default Commerce store for this brand-new user.

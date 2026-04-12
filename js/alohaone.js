@@ -7,13 +7,36 @@
 
 const ALOHAONE_VERSION = '0.2.0';
 
-// --- Auth / User state (Cognito IdToken in localStorage) ---
-// Token is the raw Cognito IdToken (JWT). The shell passes this into Commerce
-// iframes via a URL fragment so cross-origin children can authenticate without
-// a second login round-trip.
+// --- Auth / User state ---
+// Two tokens are stashed per session:
+//
+//   ao_token         — Cognito IdToken (JWT). Used as Authorization: Bearer
+//                      for Aloha APIs (Commerce, Backup, future). The shell
+//                      passes it to iframe children via #token= handoff.
+//
+//   ao_access_token  — Cognito AccessToken. Required by Cognito self-service
+//                      APIs that operate on the logged-in user's own identity:
+//                      ChangePassword, GlobalSignOut, UpdateUserAttributes,
+//                      GetUser, DeleteUser. Never used for API auth — our APIs
+//                      validate the IdToken's claims (email, sub, name),
+//                      which the AccessToken doesn't expose.
 
 function getToken() { return localStorage.getItem('ao_token'); }
 function setToken(t) { localStorage.setItem('ao_token', t); }
+
+function getAccessToken() { return localStorage.getItem('ao_access_token'); }
+function setAccessToken(t) { localStorage.setItem('ao_access_token', t); }
+
+/**
+ * Stash both tokens from a Cognito InitiateAuth / RespondToAuthChallenge
+ * response in one call. Used by login.html + register.html so neither has
+ * to know about the two-key layout.
+ */
+function setAuthTokens(authenticationResult) {
+    if (!authenticationResult) return;
+    if (authenticationResult.IdToken)     setToken(authenticationResult.IdToken);
+    if (authenticationResult.AccessToken) setAccessToken(authenticationResult.AccessToken);
+}
 
 function getUser() {
     const u = localStorage.getItem('ao_user');
@@ -23,13 +46,37 @@ function setUser(u) { localStorage.setItem('ao_user', JSON.stringify(u)); }
 
 function clearSession() {
     localStorage.removeItem('ao_token');
+    localStorage.removeItem('ao_access_token');
     localStorage.removeItem('ao_user');
     localStorage.removeItem('ao_role');
     localStorage.removeItem('ao_enabled_platforms');
     localStorage.removeItem('ao_enabled_capabilities');
+    localStorage.removeItem('ao_intended_tier');
 }
 
-function logout() {
+/**
+ * Sign out. Revokes the Cognito refresh token across all the user's active
+ * sessions via GlobalSignOut — any other device the user is signed in on
+ * stops being able to refresh. Non-fatal: even if Cognito is unreachable we
+ * still clear local state and bounce to login.
+ */
+async function logout() {
+    const cfg = window.ALOHAONE_CONFIG;
+    const accessToken = getAccessToken();
+    if (cfg && accessToken) {
+        try {
+            await fetch(cfg.COGNITO_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-amz-json-1.1',
+                    'X-Amz-Target': 'AWSCognitoIdentityProviderService.GlobalSignOut'
+                },
+                body: JSON.stringify({ AccessToken: accessToken })
+            });
+        } catch (err) {
+            console.warn('[logout] GlobalSignOut failed:', err);
+        }
+    }
     clearSession();
     window.location.href = 'login.html';
 }
