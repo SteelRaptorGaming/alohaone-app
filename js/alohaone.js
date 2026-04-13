@@ -339,3 +339,270 @@ function initAppShell(activePage) {
             }
         });
 }
+
+// --- Commerce API helper ---
+// Cross-origin fetch to AlohaCommerce with the Cognito IdToken attached as
+// a bearer. AlohaOneApp lives on a different origin than the Commerce API
+// (app.alohaone.ai vs rdadh5e9q2.execute-api...) so we need Authorization
+// explicit on every call. AlohaCommerce's CORS is already AllowAnyOrigin
+// (see alohacommerce-api Program.cs), so no preflight surprises.
+async function commerceFetch(path, init = {}) {
+    const cfg = window.ALOHAONE_CONFIG;
+    const token = getToken();
+    if (!cfg) throw new Error('ALOHAONE_CONFIG not loaded');
+    if (!token) throw new Error('Not authenticated');
+
+    const headers = Object.assign({
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json'
+    }, init.headers || {});
+
+    const r = await fetch(cfg.COMMERCE_API_BASE + path, { ...init, headers });
+    if (!r.ok) {
+        const text = await r.text().catch(() => '');
+        throw new Error(`${r.status} ${r.statusText}: ${text}`);
+    }
+    const ct = r.headers.get('content-type') || '';
+    return ct.includes('application/json') ? r.json() : r.text();
+}
+
+// --- Billing view ---
+// Called by the shell after mounting partials/billing.html (via the
+// init{View}View naming convention in js/shell.js loadNativeView), and
+// also called explicitly from the standalone billing.html page.
+//
+// Fetches the user's platform subscription from AlohaCommerce's
+// /api/billing/status (which returns the Phase D.1 tier breakdown:
+// per-tier quantity, totalMonthlyCents, currentPeriodEnd, etc.) and
+// populates the DOM elements that partials/billing.html declares.
+//
+// Handles three states:
+//   - No session / fetch error → alert banner with a retry button
+//   - status === 'none' (user has never subscribed) → friendly
+//     "You're on the free tier" empty state + CTA to enable a paid
+//     capability
+//   - status present → plan summary, launched-site count, per-tier
+//     breakdown, next-invoice date, amount due, and a live Manage
+//     button wired to the Stripe Customer Portal session endpoint.
+async function initBillingView() {
+    const totalEl    = document.getElementById('billing-monthly-total');
+    const nextEl     = document.getElementById('billing-next-charge');
+    const planEl     = document.getElementById('billing-plan-badge');
+    const breakdownEl = document.getElementById('billing-breakdown');
+    const manageBtn  = document.getElementById('billing-manage-btn');
+    const emptyEl    = document.getElementById('billing-empty-state');
+    const errorEl    = document.getElementById('billing-error');
+
+    // Everything is best-effort — the page uses data-* ids on AlohaOneApp's
+    // side, so if the partial DOM isn't present we just return. This lets
+    // the same function serve both partials/billing.html and the standalone
+    // page even if they diverge slightly.
+    const set = (el, txt) => { if (el) el.textContent = txt; };
+    const show = (el, on) => { if (el) el.style.display = on ? '' : 'none'; };
+
+    try {
+        const status = await commerceFetch('/api/billing/status');
+
+        // New user / no subscription yet
+        if (!status || status.status === 'none') {
+            show(emptyEl, true);
+            show(errorEl, false);
+            if (breakdownEl) breakdownEl.innerHTML = '';
+            set(totalEl, '$0.00');
+            set(nextEl, '');
+            if (planEl) {
+                planEl.textContent = 'Free';
+                planEl.className = 'badge bg-secondary fs-6';
+            }
+            if (manageBtn) {
+                manageBtn.disabled = true;
+                manageBtn.title = 'Subscribe to a paid plan first.';
+            }
+            return;
+        }
+
+        show(emptyEl, false);
+        show(errorEl, false);
+
+        // Plan summary
+        const totalDollars = (status.totalMonthlyCents || 0) / 100;
+        set(totalEl, formatCurrency(totalDollars));
+
+        // Next invoice
+        if (status.currentPeriodEnd) {
+            set(nextEl, 'Next charge: ' + formatDate(status.currentPeriodEnd));
+        } else {
+            set(nextEl, '');
+        }
+
+        // Plan badge — show the dominant tier name or the first tier
+        if (planEl) {
+            const tiers = status.tierBreakdown || [];
+            if (tiers.length === 1) {
+                planEl.textContent = tiers[0].tierName || tiers[0].TierName || 'Standard';
+            } else if (tiers.length > 1) {
+                planEl.textContent = `${tiers.length} tiers`;
+            } else {
+                planEl.textContent = 'Active';
+            }
+            planEl.className = 'badge bg-success fs-6';
+        }
+
+        // Per-tier breakdown table
+        if (breakdownEl) {
+            const tiers = status.tierBreakdown || [];
+            const launched = status.launchedStores || 0;
+            if (tiers.length === 0) {
+                breakdownEl.innerHTML = `
+                    <div class="text-muted small">
+                        Subscription is active but no launched stores are on it yet.
+                        Publish a store in AlohaCommerce to start being billed.
+                    </div>`;
+            } else {
+                breakdownEl.innerHTML = `
+                    <div class="text-muted small mb-2">${launched} launched store${launched === 1 ? '' : 's'}</div>
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>Tier</th>
+                                <th class="text-end">Stores</th>
+                                <th class="text-end">Per store</th>
+                                <th class="text-end">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tiers.map(t => {
+                                const name  = t.tierName || t.TierName || t.tierCode || t.TierCode || '—';
+                                const qty   = t.quantity ?? t.Quantity ?? 0;
+                                const cents = t.monthlyPriceCents ?? t.MonthlyPriceCents ?? 0;
+                                const sub   = (qty * cents) / 100;
+                                return `<tr>
+                                    <td><strong>${name}</strong></td>
+                                    <td class="text-end">${qty}</td>
+                                    <td class="text-end">${formatCurrency(cents / 100)}</td>
+                                    <td class="text-end"><strong>${formatCurrency(sub)}</strong></td>
+                                </tr>`;
+                            }).join('')}
+                        </tbody>
+                    </table>`;
+            }
+        }
+
+        // Invoice history (best-effort — invoices render after status,
+        // and a failure here doesn't blow up the rest of the page).
+        loadBillingInvoices();
+
+        // Manage button → Stripe Customer Portal via /api/billing/manage
+        if (manageBtn) {
+            manageBtn.disabled = false;
+            manageBtn.onclick = async () => {
+                manageBtn.disabled = true;
+                const oldLabel = manageBtn.innerHTML;
+                manageBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin me-1"></i> Opening…';
+                try {
+                    const resp = await commerceFetch('/api/billing/manage', {
+                        method: 'POST',
+                        body: JSON.stringify({ returnUrl: window.location.href })
+                    });
+                    if (resp && resp.url) {
+                        window.location.href = resp.url;
+                    } else {
+                        throw new Error('No portal URL returned');
+                    }
+                } catch (err) {
+                    manageBtn.disabled = false;
+                    manageBtn.innerHTML = oldLabel;
+                    showError('Could not open billing portal: ' + err.message);
+                }
+            };
+        }
+    } catch (err) {
+        show(emptyEl, false);
+        if (errorEl) {
+            errorEl.style.display = '';
+            errorEl.innerHTML = `
+                <strong>Could not load billing.</strong> ${err.message}
+                <button class="btn btn-sm btn-outline-danger ms-2" onclick="initBillingView()">Retry</button>`;
+        } else {
+            showError('Could not load billing: ' + err.message);
+        }
+    }
+}
+// Alias so the standalone billing.html's historical name still works.
+window.loadBilling = initBillingView;
+
+/**
+ * Render the Stripe invoice history into #billing-invoices. Called by
+ * initBillingView after the status payload succeeds. Safe to call on its
+ * own — bails out silently if the DOM container isn't present, and degrades
+ * to a friendly empty state when no invoices exist or when the backend
+ * returns an error.
+ */
+async function loadBillingInvoices() {
+    const container = document.getElementById('billing-invoices');
+    if (!container) return;
+
+    const statusBadge = (s, paid) => {
+        if (paid) return '<span class="badge bg-success">Paid</span>';
+        switch (s) {
+            case 'open':          return '<span class="badge bg-warning text-dark">Open</span>';
+            case 'draft':         return '<span class="badge bg-secondary">Draft</span>';
+            case 'uncollectible': return '<span class="badge bg-danger">Uncollectible</span>';
+            case 'void':          return '<span class="badge bg-dark">Void</span>';
+            case 'paid':          return '<span class="badge bg-success">Paid</span>';
+            default:              return `<span class="badge bg-secondary">${s || '—'}</span>`;
+        }
+    };
+
+    try {
+        const invoices = await commerceFetch('/api/billing/invoices?limit=24');
+        if (!invoices || invoices.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state-small text-muted text-center py-4">
+                    <i class="fas fa-file-invoice me-2"></i>
+                    No invoices yet. Your first one will appear after the next billing cycle.
+                </div>`;
+            return;
+        }
+
+        container.innerHTML = `
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th style="padding-left:1rem">Date</th>
+                        <th>Invoice</th>
+                        <th class="text-end">Amount</th>
+                        <th>Status</th>
+                        <th class="text-end" style="padding-right:1rem">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${invoices.map(inv => {
+                        const total    = (inv.amountPaidCents || inv.amountDueCents || 0) / 100;
+                        const number   = inv.number || inv.id;
+                        const created  = inv.created;
+                        const hosted   = inv.hostedInvoiceUrl;
+                        const pdf      = inv.invoicePdf;
+                        const links    = [];
+                        if (hosted) links.push(`<a href="${hosted}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary me-1"><i class="fa-solid fa-eye"></i> View</a>`);
+                        if (pdf)    links.push(`<a href="${pdf}"    target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-file-pdf"></i> PDF</a>`);
+                        return `
+                            <tr>
+                                <td style="padding-left:1rem">${formatDate(created)}</td>
+                                <td><code class="small">${number}</code></td>
+                                <td class="text-end"><strong>${formatCurrency(total)}</strong></td>
+                                <td>${statusBadge(inv.status, inv.paid)}</td>
+                                <td class="text-end" style="padding-right:1rem">${links.join('') || '<span class="text-muted small">—</span>'}</td>
+                            </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>`;
+    } catch (err) {
+        container.innerHTML = `
+            <div class="empty-state-small text-muted text-center py-4">
+                <i class="fas fa-circle-exclamation me-2"></i>
+                Could not load invoices: ${err.message}
+                <button class="btn btn-sm btn-outline-secondary ms-2" onclick="loadBillingInvoices()">Retry</button>
+            </div>`;
+    }
+}
