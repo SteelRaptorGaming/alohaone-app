@@ -206,7 +206,7 @@ public static class PlatformCatalogEndpoints
             var current = await conn.QuerySingleOrDefaultAsync(
                 """
                 SELECT t.id, t.code, t.name, t.monthly_price_cents, t.stripe_price_id,
-                       p.stripe_product_id, p.name AS platform_name
+                       p.stripe_product_id, p.name AS platform_name, p.code AS platform_code
                 FROM shared.platform_tiers t
                 JOIN shared.platforms p ON p.id = t.platform_id
                 WHERE t.id = @Id AND t.platform_id = @PlatformId
@@ -230,7 +230,7 @@ public static class PlatformCatalogEndpoints
                 if (string.IsNullOrEmpty(stripeProductId))
                 {
                     stripeProductId = await CreateStripeProductAsync(config,
-                        (string)current.platform_name, (string)current.code);
+                        (string)current.platform_name, (string)current.platform_code);
                     await conn.ExecuteAsync(
                         "UPDATE shared.platforms SET stripe_product_id = @ProductId, updated_at = NOW() WHERE id = @Id",
                         new { ProductId = stripeProductId, Id = id });
