@@ -36,5 +36,7 @@ app.MapHealthEndpoints();
 app.MapAdminEndpoints();   // POST /api/admin/purchases/grant (webhook receiver)
 app.MapMeEndpoints();      // GET /api/me, /api/me/platforms, /api/me/billing, /api/me/activity
 app.MapPlatformCatalogEndpoints();  // Phase E.1: /api/admin/catalog/* and /api/catalog
+app.MapCheckoutEndpoints();          // Phase E.2: /api/checkout/create-session
+app.MapBillingWebhookEndpoints();    // Phase E.2: /api/billing/webhook
 
 app.Run();
