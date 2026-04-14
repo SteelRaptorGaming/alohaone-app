@@ -22,5 +22,7 @@
     <!-- Direct Dapper for endpoint queries -->
     <PackageReference Include="Dapper" Version="2.1.72" />
     <PackageReference Include="Npgsql" Version="8.0.6" />
+    <!-- Stripe.net for Phase E.1 platform tier Stripe Price sync -->
+    <PackageReference Include="Stripe.net" Version="46.0.0" />
   </ItemGroup>
 </Project>

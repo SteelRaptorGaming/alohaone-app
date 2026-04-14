@@ -305,6 +305,40 @@ function qs(name) {
 
 // --- Sidebar / nav init ---
 
+/**
+ * Decode a JWT and return its payload object, or null if the token is
+ * missing/malformed. Does NOT verify the signature — this is a pure
+ * client-side claims peek for UI decisions like "is this user a
+ * PlatformAdmin". The server always re-verifies for security.
+ */
+function decodeJwtPayload(token) {
+    if (!token) return null;
+    try {
+        const parts = token.split('.');
+        if (parts.length !== 3) return null;
+        const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        const padded = base64 + '==='.slice((base64.length + 3) % 4);
+        return JSON.parse(atob(padded));
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Whether the currently-logged-in user is in the PlatformAdmin Cognito
+ * group, as reported by their ID token's `cognito:groups` claim. Used by
+ * initAppShell() to hide the Admin nav section for non-admins, per the
+ * "hide what the user can't have" UI rule. Server-side RequirePlatformAdmin
+ * is the authoritative gate; this is purely for UX.
+ */
+function isPlatformAdmin() {
+    const payload = decodeJwtPayload(getToken());
+    if (!payload) return false;
+    const groups = payload['cognito:groups'];
+    if (Array.isArray(groups)) return groups.includes('PlatformAdmin');
+    return false;
+}
+
 function initAppShell(activePage) {
     // Load sidebar partial into #sidebar-container
     const container = document.getElementById('sidebar-container');
@@ -319,6 +353,14 @@ function initAppShell(activePage) {
             document.querySelectorAll('.nav-link[data-page]').forEach(el => {
                 if (el.dataset.page === activePage) el.classList.add('active');
             });
+
+            // Hide the Admin section entirely for non-admin users. The
+            // sidebar HTML tags admin-only rows with `.sidebar-admin-only`
+            // so this yank is a single pass with no layout reflow issue.
+            if (!isPlatformAdmin()) {
+                document.querySelectorAll('.sidebar-admin-only')
+                    .forEach(el => el.remove());
+            }
 
             // Populate user block
             const user = getUser();
@@ -347,17 +389,32 @@ function initAppShell(activePage) {
 // explicit on every call. AlohaCommerce's CORS is already AllowAnyOrigin
 // (see alohacommerce-api Program.cs), so no preflight surprises.
 async function commerceFetch(path, init = {}) {
+    return apiFetch('COMMERCE_API_BASE', path, init);
+}
+
+/**
+ * Cross-origin fetch to the AlohaOneApp shared API (shared.api.alohaone.ai).
+ * Hosts cross-platform surfaces: catalog, billing, lifecycle, audit,
+ * notifications, admin. Phase E.1.
+ */
+async function sharedFetch(path, init = {}) {
+    return apiFetch('SHARED_API_BASE', path, init);
+}
+
+async function apiFetch(configKey, path, init = {}) {
     const cfg = window.ALOHAONE_CONFIG;
     const token = getToken();
     if (!cfg) throw new Error('ALOHAONE_CONFIG not loaded');
     if (!token) throw new Error('Not authenticated');
+    const base = cfg[configKey];
+    if (!base) throw new Error(`${configKey} not set in ALOHAONE_CONFIG`);
 
     const headers = Object.assign({
         'Authorization': 'Bearer ' + token,
         'Content-Type': 'application/json'
     }, init.headers || {});
 
-    const r = await fetch(cfg.COMMERCE_API_BASE + path, { ...init, headers });
+    const r = await fetch(base + path, { ...init, headers });
     if (!r.ok) {
         const text = await r.text().catch(() => '');
         throw new Error(`${r.status} ${r.statusText}: ${text}`);

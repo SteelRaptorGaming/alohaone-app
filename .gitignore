@@ -1,3 +1,10 @@
 node_modules/
 bin/
 obj/
+
+# .NET publish output + Lambda zip artifacts (don't commit binaries)
+**/publish/
+**/Publish/
+*.zip
+alohaoneapp-api/publish/
+alohaoneapp-api/alohaoneapp-api.zip

@@ -16,8 +16,13 @@ window.ALOHAONE_CONFIG = {
     COGNITO_CLIENT_ID: 'n9306pn18r2g9ha6l3r0rnhj1',
     COGNITO_ENDPOINT:  'https://cognito-idp.us-east-1.amazonaws.com/',
 
-    // AlohaCommerce API — where /api/auth/sync lives (auto-provisions the
-    // user's default store on first login).
+    // AlohaOneApp shared API — cross-platform surfaces: catalog, billing,
+    // lifecycle, audit, notifications, admin. Phase E.1 custom domain.
+    SHARED_API_BASE:   'https://shared.api.alohaone.ai',
+
+    // AlohaCommerce API — Commerce-specific surfaces only (stores,
+    // products, orders, /api/auth/sync for first-login provisioning).
+    // Will move to commerce.api.alohaone.ai in a follow-up.
     COMMERCE_API_BASE: 'https://rdadh5e9q2.execute-api.us-east-1.amazonaws.com',
 
     // AlohaBackup API — for future first-login provisioning via its own sync.

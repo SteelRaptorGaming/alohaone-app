@@ -114,6 +114,20 @@ body {
     padding: 0.5rem 0 1rem;
 }
 
+/* Admin section label (Phase E.1) — small caps separator above the
+   admin nav group. Endpoints are server-gated, so the label is visible
+   to every user; non-admins just see a 403 if they click. */
+.sidebar .sidebar-section-label {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 1rem 1rem 0.4rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin-top: 0.5rem;
+}
+
 /* --- Main Content --- */
 
 .main-content {

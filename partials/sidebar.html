@@ -36,6 +36,19 @@
         </li>
     </ul>
 
+    <!-- Admin section — only rendered for users with the PlatformAdmin
+         security group. initAppShell() removes this block for anyone else,
+         per the "hide what the user can't have" UI rule. Server-side
+         endpoints still enforce RequirePlatformAdmin as a second line. -->
+    <div class="sidebar-section-label sidebar-admin-only">Admin</div>
+    <ul class="nav flex-column sidebar-admin-only">
+        <li class="nav-item">
+            <a class="nav-link" data-page="admin-platforms" href="admin-platforms.html">
+                <i class="fa-solid fa-layer-group"></i> Platform Catalog
+            </a>
+        </li>
+    </ul>
+
     <div class="sidebar-signout">
         <a class="nav-link text-danger" id="sb-logout" href="#">
             <i class="fa-solid fa-right-from-bracket"></i> Sign Out

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Platform Catalog — AlohaOne Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link href="css/alohaone.css" rel="stylesheet">
+    <style>
+        .platform-card {
+            transition: box-shadow 0.15s ease;
+        }
+        .platform-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        .platform-icon {
+            font-size: 1.75rem;
+            width: 3rem;
+            text-align: center;
+            color: var(--bs-primary);
+        }
+        .platform-disabled .platform-icon {
+            color: var(--bs-secondary);
+            opacity: 0.5;
+        }
+        .form-check-input.platform-toggle {
+            width: 2.75em;
+            height: 1.5em;
+            cursor: pointer;
+        }
+        .tier-row code {
+            font-size: 0.85em;
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar-container"></div>
+
+    <div class="main-content">
+        <div class="top-bar d-flex justify-content-between align-items-center">
+            <div>
+                <h1>Platform Catalog</h1>
+                <p class="text-muted mb-0 small">
+                    Central pricing catalog for every AlohaOne child platform.
+                    Disabled platforms hide from the cart but keep existing
+                    subscribers grandfathered.
+                </p>
+            </div>
+        </div>
+        <div id="alert-area"></div>
+
+        <div id="catalog-loading" class="text-center py-5">
+            <i class="fas fa-circle-notch fa-spin me-2"></i>
+            Loading platform catalog…
+        </div>
+
+        <div id="catalog-root" style="display:none"></div>
+    </div>
+
+    <!-- Tier create/edit modal -->
+    <div class="modal fade" id="tierModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="tierModalTitle">Tier</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="tierForm">
+                        <input type="hidden" id="tier-id">
+                        <input type="hidden" id="tier-platform-id">
+
+                        <div class="mb-3">
+                            <label for="tier-code" class="form-label">Code</label>
+                            <input type="text" class="form-control font-monospace" id="tier-code" required
+                                pattern="^[a-z0-9_-]{2,40}$"
+                                placeholder="e.g. standard, pro, enterprise">
+                            <div class="form-text">Lowercase, digits, dash, underscore. 2–40 chars. Immutable after save.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="tier-name" class="form-label">Display name</label>
+                            <input type="text" class="form-control" id="tier-name" required placeholder="Standard">
+                        </div>
+                        <div class="mb-3">
+                            <label for="tier-description" class="form-label">Description</label>
+                            <textarea class="form-control" id="tier-description" rows="2"
+                                placeholder="What the designer gets at this tier"></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="tier-price" class="form-label">Monthly price (USD)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="tier-price"
+                                        required min="0" step="0.01" placeholder="9.99">
+                                </div>
+                                <div class="form-text">
+                                    Auto-creates / replaces a Stripe Price object on save.
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="tier-display-order" class="form-label">Display order</label>
+                                <input type="number" class="form-control" id="tier-display-order" value="0">
+                            </div>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="tier-is-active" checked>
+                            <label class="form-check-label" for="tier-is-active">
+                                Active (available for new signups)
+                            </label>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="tier-save-btn">
+                        <i class="fa-solid fa-save me-1"></i> Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/alohaone.js"></script>
+    <script src="js/admin-platforms.js"></script>
+    <script>
+        if (requireAuth()) {
+            initAppShell('admin-platforms').then(initAdminPlatformsView);
+        }
+    </script>
+</body>
+</html>

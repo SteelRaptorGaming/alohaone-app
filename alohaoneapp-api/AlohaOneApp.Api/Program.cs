@@ -35,5 +35,6 @@ app.UseAlohaCore();
 app.MapHealthEndpoints();
 app.MapAdminEndpoints();   // POST /api/admin/purchases/grant (webhook receiver)
 app.MapMeEndpoints();      // GET /api/me, /api/me/platforms, /api/me/billing, /api/me/activity
+app.MapPlatformCatalogEndpoints();  // Phase E.1: /api/admin/catalog/* and /api/catalog
 
 app.Run();
