@@ -32,7 +32,7 @@ public static class CheckoutEndpoints
 
         // POST /api/checkout/create-session
         group.MapPost("/create-session",
-            async (HttpContext ctx, IDbConnectionFactory db, IConfiguration config,
+            async (HttpContext ctx, IDbConnectionFactory db, StripeSecretsProvider stripe,
                    CreateCheckoutSessionRequest req) =>
         {
             if (ctx.RequireAuth() is { } denied) return denied;
@@ -43,7 +43,12 @@ public static class CheckoutEndpoints
             if (req.Items.Length > 5)
                 return ApiError.BadRequest("Cart holds at most five items");
 
-            var apiKey = config["STRIPE_SECRET_KEY"];
+            string apiKey;
+            try { apiKey = await stripe.GetSecretKeyAsync(); }
+            catch (Exception ex)
+            {
+                return ApiError.BadRequest("Stripe is not configured on this environment: " + ex.Message);
+            }
             if (string.IsNullOrEmpty(apiKey))
                 return ApiError.BadRequest("Stripe is not configured on this environment");
             var reqOpts = new RequestOptions { ApiKey = apiKey };

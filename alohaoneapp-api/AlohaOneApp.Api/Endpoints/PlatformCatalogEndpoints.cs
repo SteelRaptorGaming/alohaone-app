@@ -114,7 +114,7 @@ public static class PlatformCatalogEndpoints
         // POST /api/admin/catalog/platforms/{id}/tiers — create a new tier
         // and matching Stripe Price.
         group.MapPost("/platforms/{id:long}/tiers",
-            async (HttpContext ctx, IDbConnectionFactory db, IConfiguration config,
+            async (HttpContext ctx, IDbConnectionFactory db, StripeSecretsProvider stripe,
                    long id, TierUpsertRequest req) =>
         {
             if (ctx.RequirePlatformAdmin() is { } denied) return denied;
@@ -142,25 +142,28 @@ public static class PlatformCatalogEndpoints
                 return ApiError.BadRequest($"A tier with code '{req.Code}' already exists for this platform");
 
             // Ensure the platform has a Stripe Product; create lazily if missing.
-            // If STRIPE_SECRET_KEY is not configured (typical in dev), skip
-            // Stripe entirely — the tier saves with stripe_price_id NULL and
-            // will be backfilled the first time an admin saves after Stripe
-            // creds are added to the Lambda env.
-            var stripeConfigured = !string.IsNullOrEmpty(config["STRIPE_SECRET_KEY"]);
+            // If the Stripe secret is not configured (edge case in bare dev),
+            // skip Stripe entirely — the tier saves with stripe_price_id NULL
+            // and can be backfilled by re-saving once the secret is populated.
+            string stripeKey = "";
+            try { stripeKey = await stripe.GetSecretKeyAsync(); }
+            catch { /* no stripe configured — graceful local-dev fallback */ }
+
+            var stripeConfigured = !string.IsNullOrEmpty(stripeKey);
             var stripeProductId = (string?)platform.stripe_product_id;
             string? stripePriceId = null;
             if (stripeConfigured)
             {
                 if (string.IsNullOrEmpty(stripeProductId))
                 {
-                    stripeProductId = await CreateStripeProductAsync(config,
+                    stripeProductId = await CreateStripeProductAsync(stripeKey,
                         (string)platform.name, (string)platform.code);
                     await conn.ExecuteAsync(
                         "UPDATE shared.platforms SET stripe_product_id = @ProductId, updated_at = NOW() WHERE id = @Id",
                         new { ProductId = stripeProductId, Id = id });
                 }
 
-                stripePriceId = await CreateStripePriceAsync(config,
+                stripePriceId = await CreateStripePriceAsync(stripeKey,
                     stripeProductId!, req.Name, req.MonthlyPriceCents);
             }
 
@@ -197,7 +200,7 @@ public static class PlatformCatalogEndpoints
         // archive the old one; existing subscriptions bill at the new price
         // on next invoice after Commerce's SyncSubscriptionItemsAsync runs.
         group.MapPut("/platforms/{id:long}/tiers/{tierId:long}",
-            async (HttpContext ctx, IDbConnectionFactory db, IConfiguration config,
+            async (HttpContext ctx, IDbConnectionFactory db, StripeSecretsProvider stripe,
                    long id, long tierId, TierUpsertRequest req) =>
         {
             if (ctx.RequirePlatformAdmin() is { } denied) return denied;
@@ -220,23 +223,27 @@ public static class PlatformCatalogEndpoints
 
             // Stripe Prices are immutable; if the price changed and Stripe is
             // configured, mint a new Price object and archive the old one.
-            // If STRIPE_SECRET_KEY is missing (typical in dev) the tier
-            // updates locally with stripe_price_id unchanged — the admin can
-            // re-save after Stripe creds are added to backfill pricing.
-            var stripeConfigured = !string.IsNullOrEmpty(config["STRIPE_SECRET_KEY"]);
+            // If the Stripe secret is missing (edge case) the tier updates
+            // locally with stripe_price_id unchanged — the admin can re-save
+            // after the secret is populated.
+            string stripeKey = "";
+            try { stripeKey = await stripe.GetSecretKeyAsync(); }
+            catch { /* no stripe configured — graceful local-dev fallback */ }
+
+            var stripeConfigured = !string.IsNullOrEmpty(stripeKey);
             if (stripeConfigured &&
                 (req.MonthlyPriceCents != oldPriceCents || string.IsNullOrEmpty(oldStripePriceId)))
             {
                 if (string.IsNullOrEmpty(stripeProductId))
                 {
-                    stripeProductId = await CreateStripeProductAsync(config,
+                    stripeProductId = await CreateStripeProductAsync(stripeKey,
                         (string)current.platform_name, (string)current.platform_code);
                     await conn.ExecuteAsync(
                         "UPDATE shared.platforms SET stripe_product_id = @ProductId, updated_at = NOW() WHERE id = @Id",
                         new { ProductId = stripeProductId, Id = id });
                 }
 
-                newStripePriceId = await CreateStripePriceAsync(config,
+                newStripePriceId = await CreateStripePriceAsync(stripeKey,
                     stripeProductId, req.Name ?? (string)current.name, req.MonthlyPriceCents);
 
                 if (!string.IsNullOrEmpty(oldStripePriceId))
@@ -246,7 +253,7 @@ public static class PlatformCatalogEndpoints
                         var priceService = new PriceService();
                         await priceService.UpdateAsync(oldStripePriceId,
                             new PriceUpdateOptions { Active = false },
-                            new RequestOptions { ApiKey = config["STRIPE_SECRET_KEY"] });
+                            new RequestOptions { ApiKey = stripeKey });
                     }
                     catch { /* non-fatal — the old price just stays active in Stripe */ }
                 }
@@ -347,12 +354,8 @@ public static class PlatformCatalogEndpoints
         System.Text.RegularExpressions.Regex.IsMatch(code, @"^[a-z0-9_-]{2,40}$");
 
     private static async Task<string> CreateStripeProductAsync(
-        IConfiguration config, string platformName, string platformCode)
+        string apiKey, string platformName, string platformCode)
     {
-        var apiKey = config["STRIPE_SECRET_KEY"];
-        if (string.IsNullOrEmpty(apiKey))
-            throw new InvalidOperationException("STRIPE_SECRET_KEY is not configured");
-
         var productService = new ProductService();
         var product = await productService.CreateAsync(new ProductCreateOptions
         {
@@ -368,12 +371,8 @@ public static class PlatformCatalogEndpoints
     }
 
     private static async Task<string> CreateStripePriceAsync(
-        IConfiguration config, string stripeProductId, string tierName, int unitAmountCents)
+        string apiKey, string stripeProductId, string tierName, int unitAmountCents)
     {
-        var apiKey = config["STRIPE_SECRET_KEY"];
-        if (string.IsNullOrEmpty(apiKey))
-            throw new InvalidOperationException("STRIPE_SECRET_KEY is not configured");
-
         var priceService = new PriceService();
         var price = await priceService.CreateAsync(new PriceCreateOptions
         {

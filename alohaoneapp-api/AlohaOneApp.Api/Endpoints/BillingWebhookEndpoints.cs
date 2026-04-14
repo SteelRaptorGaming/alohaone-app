@@ -32,11 +32,13 @@ public static class BillingWebhookEndpoints
     }
 
     private static async Task<IResult> HandleWebhook(
-        HttpContext ctx, IConfiguration config, IDbConnectionFactory db)
+        HttpContext ctx, StripeSecretsProvider stripe, IDbConnectionFactory db)
     {
         var body = await new StreamReader(ctx.Request.Body).ReadToEndAsync();
         var signature = ctx.Request.Headers["Stripe-Signature"].FirstOrDefault();
-        var webhookSecret = config["STRIPE_WEBHOOK_SECRET"] ?? "";
+        string webhookSecret = "";
+        try { webhookSecret = await stripe.GetWebhookSecretAsync(); }
+        catch { /* missing is fine — we fall through to ParseEvent below */ }
 
         Event stripeEvent;
         try
@@ -66,7 +68,7 @@ public static class BillingWebhookEndpoints
         switch (stripeEvent.Type)
         {
             case "checkout.session.completed":
-                await HandleCheckoutSessionCompleted(stripeEvent, conn, config);
+                await HandleCheckoutSessionCompleted(stripeEvent, conn, stripe);
                 break;
             case "invoice.paid":
             case "invoice.payment_succeeded":
@@ -87,7 +89,7 @@ public static class BillingWebhookEndpoints
     }
 
     private static async Task HandleCheckoutSessionCompleted(
-        Event stripeEvent, System.Data.IDbConnection conn, IConfiguration config)
+        Event stripeEvent, System.Data.IDbConnection conn, StripeSecretsProvider stripe)
     {
         var session = stripeEvent.Data.Object as Session;
         if (session is null || string.IsNullOrEmpty(session.SubscriptionId)) return;
@@ -108,7 +110,8 @@ public static class BillingWebhookEndpoints
 
         // Pull the real subscription from Stripe so we capture the period
         // window + status without guessing.
-        var apiKey = config["STRIPE_SECRET_KEY"] ?? "";
+        string apiKey = "";
+        try { apiKey = await stripe.GetSecretKeyAsync(); } catch { /* handler is best-effort */ }
         var reqOpts = new RequestOptions { ApiKey = apiKey };
         var subService = new SubscriptionService();
         Subscription? stripeSub = null;
