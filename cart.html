@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cart — AlohaOne</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link href="css/alohaone.css" rel="stylesheet">
+    <style>
+        .cart-line {
+            display: grid;
+            grid-template-columns: 1fr auto auto auto;
+            gap: 1rem;
+            align-items: center;
+            padding: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .cart-line:last-child { border-bottom: none; }
+        .cart-line .name { font-weight: 600; }
+        .cart-line .sub  { color: #6b7280; font-size: 0.85rem; }
+        .cart-line .price { font-variant-numeric: tabular-nums; font-weight: 600; }
+        .cart-line .qty   { width: 4rem; }
+        .cart-empty {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar-container"></div>
+
+    <div class="main-content">
+        <div class="top-bar d-flex justify-content-between align-items-center">
+            <div>
+                <h1>Cart</h1>
+                <p class="text-muted mb-0 small">
+                    Review your selections before continuing to Stripe to enter payment.
+                </p>
+            </div>
+            <a href="catalog.html" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-arrow-left me-1"></i> Back to Catalog
+            </a>
+        </div>
+        <div id="alert-area"></div>
+
+        <div id="cart-loading" class="text-center py-5">
+            <i class="fas fa-circle-notch fa-spin me-2"></i>
+            Loading cart…
+        </div>
+
+        <div id="cart-root" style="display:none">
+            <div class="row g-4">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header"><h5 class="mb-0">Your plans</h5></div>
+                        <div class="card-body p-0" id="cart-lines"></div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="card mb-3">
+                        <div class="card-header"><h5 class="mb-0">Summary</h5></div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Items</span>
+                                <span id="cart-item-count">0</span>
+                            </div>
+                            <div class="d-flex justify-content-between fs-5 fw-bold mt-3 pt-3 border-top">
+                                <span>Monthly total</span>
+                                <span id="cart-monthly-total">$0.00</span>
+                            </div>
+                            <div class="text-muted small mt-1">per month, billed by Stripe</div>
+                            <button class="btn btn-primary w-100 mt-4" id="cart-checkout-btn">
+                                <i class="fa-solid fa-lock me-1"></i> Checkout
+                            </button>
+                            <div class="text-muted small text-center mt-2">
+                                You'll enter payment securely on Stripe.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="cart-empty" class="cart-empty" style="display:none">
+            <i class="fa-solid fa-cart-shopping fs-1 mb-3"></i>
+            <h5>Your cart is empty.</h5>
+            <p>Browse the catalog to pick a plan.</p>
+            <a href="catalog.html" class="btn btn-primary mt-2">
+                <i class="fa-solid fa-layer-group me-1"></i> Browse Catalog
+            </a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/alohaone.js"></script>
+    <script src="js/cart.js"></script>
+    <script>
+        if (requireAuth()) {
+            initAppShell('cart').then(initCartView);
+        }
+    </script>
+</body>
+</html>

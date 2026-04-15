@@ -106,73 +106,125 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/config.js"></script>
     <script src="js/alohaone.js"></script>
-    <script src="js/platforms-data.js"></script>
     <script>
         if (requireAuth()) {
             initAppShell('dashboard').then(loadDashboard);
         }
 
-        function loadDashboard() {
-            const enabled = getEnabledPlatforms();
-            $('#stat-enabled').textContent = enabled.length;
+        // Status a subscription must have to count as "actively subscribed"
+        // for UI purposes. past_due and canceled still show up on the
+        // billing page but don't get a green tile here.
+        const ACTIVE_STATUSES = new Set(['active', 'trialing']);
 
-            // Count total enabled capabilities across all platforms
-            let capCount = 0;
-            let cost = 0;
-            enabled.forEach(slug => {
-                capCount += getEnabledCapabilities(slug).length;
-                const p = getPlatform(slug);
-                // Simple cost: add paid tier price if platform has one and isn't bundled
-                if (p?.pricing?.paid && !p.bundledIn) cost += p.pricing.paid.price || 0;
-            });
-            $('#stat-capabilities').textContent = capCount;
-            $('#stat-cost').textContent = '$' + cost.toFixed(2);
-
-            // Recent activity count
+        async function loadDashboard() {
+            // Recent activity (still local — activity feed endpoint is stubbed)
             const log = getActivityLog();
             $('#stat-activity').textContent = log.length;
+            renderRecentActivity(log);
 
-            // Build enabled grid
-            const grid = $('#enabled-grid');
-            const empty = $('#enabled-empty');
-            if (enabled.length === 0) {
-                empty.style.display = 'block';
-            } else {
-                grid.innerHTML = enabled.map(slug => {
-                    const p = getPlatform(slug);
-                    if (!p) return '';
-                    const caps = getEnabledCapabilities(slug).length;
-                    return `
-                    <div class="col-md-6 col-lg-4">
-                        <a href="enable.html?platform=${p.slug}" class="platform-card enabled d-block text-decoration-none text-dark">
-                            <div class="platform-icon" style="background:${p.gradient}">
-                                <i class="fa-solid ${p.icon}"></i>
-                            </div>
-                            <h5>${p.name}</h5>
-                            <p class="platform-tagline">${p.tagline}</p>
-                            <span class="platform-status status-enabled">
-                                <i class="fa-solid fa-check me-1"></i>${caps} capabilit${caps === 1 ? 'y' : 'ies'} on
-                            </span>
-                        </a>
-                    </div>`;
-                }).join('');
+            let subs = [];
+            let catalog = { platforms: [], tiers: [] };
+            try {
+                [subs, catalog] = await Promise.all([
+                    sharedFetch('/api/me/subscriptions'),
+                    sharedFetch('/api/catalog'),
+                ]);
+            } catch (err) {
+                showError('Could not load subscriptions: ' + err.message);
+                return;
             }
 
-            // Recent activity table (last 5)
+            const activeSubs = (subs.subscriptions || [])
+                .filter(s => ACTIVE_STATUSES.has(s.status) && s.platform_enabled);
+
+            // Stats row: enabled platforms = active subs; monthly cost = sum
+            $('#stat-enabled').textContent = activeSubs.length;
+            const totalCents = activeSubs.reduce(
+                (n, s) => n + (s.monthly_price_cents || 0), 0);
+            $('#stat-cost').textContent = '$' + (totalCents / 100).toFixed(2);
+            // Capabilities column: we no longer track those server-side, so
+            // fall back to "tiers" (one per active subscription).
+            $('#stat-capabilities').textContent = activeSubs.length;
+
+            renderPlatformGrid(activeSubs, catalog.platforms || []);
+        }
+
+        function renderPlatformGrid(activeSubs, catalogPlatforms) {
+            const grid = $('#enabled-grid');
+            const empty = $('#enabled-empty');
+
+            // Index subscribed platform ids for quick lookup.
+            const subByPlatform = new Map(activeSubs.map(s => [s.platform_id, s]));
+
+            if (activeSubs.length === 0 && catalogPlatforms.length === 0) {
+                empty.style.display = 'block';
+                return;
+            }
+            empty.style.display = 'none';
+
+            // Primary tiles: platforms the user is actually subscribed to.
+            const activeTiles = activeSubs.map(s => `
+                <div class="col-md-6 col-lg-4">
+                    <a href="platforms.html" class="platform-card enabled d-block text-decoration-none text-dark">
+                        <div class="platform-icon" style="background:linear-gradient(135deg,#0ea5e9,#0369a1)">
+                            <i class="${escapeHtmlAttr(s.platform_icon || 'fa-solid fa-cube')}"></i>
+                        </div>
+                        <h5>${escapeHtmlText(s.platform_name)}</h5>
+                        <p class="platform-tagline">
+                            ${escapeHtmlText(s.tier_name || 'Active plan')} —
+                            $${((s.monthly_price_cents || 0) / 100).toFixed(2)}/mo
+                        </p>
+                        <span class="platform-status status-enabled">
+                            <i class="fa-solid fa-check me-1"></i>Active
+                        </span>
+                    </a>
+                </div>`).join('');
+
+            // Secondary tiles: enabled-in-catalog platforms the user can
+            // subscribe to but hasn't yet. Disabled tile per hide-vs-disabled
+            // rule — rendered greyed out with a "Subscribe" CTA.
+            const upsellPlatforms = catalogPlatforms.filter(p => !subByPlatform.has(p.id));
+            const upsellTiles = upsellPlatforms.map(p => `
+                <div class="col-md-6 col-lg-4">
+                    <a href="catalog.html" class="platform-card d-block text-decoration-none text-dark" style="opacity:0.75">
+                        <div class="platform-icon" style="background:linear-gradient(135deg,#94a3b8,#475569)">
+                            <i class="${escapeHtmlAttr(p.icon || 'fa-solid fa-cube')}"></i>
+                        </div>
+                        <h5>${escapeHtmlText(p.name)}</h5>
+                        <p class="platform-tagline">${escapeHtmlText(p.description || '')}</p>
+                        <span class="platform-status status-available">
+                            <i class="fa-solid fa-plus me-1"></i>Subscribe
+                        </span>
+                    </a>
+                </div>`).join('');
+
+            grid.innerHTML = activeTiles + upsellTiles;
+        }
+
+        function renderRecentActivity(log) {
             const recent = log.slice(0, 5);
             const tbody = $('#activity-body');
             if (recent.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="3" class="empty-state"><i class="fa-solid fa-wave-square"></i><br>No activity yet</td></tr>';
-            } else {
-                tbody.innerHTML = recent.map(entry => `
-                    <tr>
-                        <td style="padding-left:1.25rem"><code>${entry.type}</code></td>
-                        <td class="text-muted small">${JSON.stringify(entry.payload)}</td>
-                        <td style="padding-right:1.25rem" class="text-muted small">${formatDateTime(entry.at)}</td>
-                    </tr>
-                `).join('');
+                return;
             }
+            tbody.innerHTML = recent.map(entry => `
+                <tr>
+                    <td style="padding-left:1.25rem"><code>${escapeHtmlText(entry.type)}</code></td>
+                    <td class="text-muted small">${escapeHtmlText(JSON.stringify(entry.payload))}</td>
+                    <td style="padding-right:1.25rem" class="text-muted small">${formatDateTime(entry.at)}</td>
+                </tr>
+            `).join('');
+        }
+
+        function escapeHtmlText(s) {
+            if (s == null) return '';
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+        function escapeHtmlAttr(s) {
+            return escapeHtmlText(s).replace(/"/g, '&quot;');
         }
     </script>
 </body>

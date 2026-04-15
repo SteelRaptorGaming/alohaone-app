@@ -52,6 +52,7 @@ function clearSession() {
     localStorage.removeItem('ao_enabled_platforms');
     localStorage.removeItem('ao_enabled_capabilities');
     localStorage.removeItem('ao_intended_tier');
+    localStorage.removeItem('ao_cart');
 }
 
 /**
@@ -231,6 +232,57 @@ function disablePlatform(slug) {
     const list = getEnabledPlatforms().filter(s => s !== slug);
     localStorage.setItem('ao_enabled_platforms', JSON.stringify(list));
     logActivity('platform.disabled', { slug });
+}
+
+// --- Cart (Phase E.2) ---
+// Client-side only. The cart is an array of
+// { platformId, tierId, quantity } stashed in localStorage under `ao_cart`.
+// When the user clicks Checkout on /cart.html, the array is POSTed to
+// `/api/checkout/create-session` on the shared API, which returns a Stripe
+// Checkout URL we redirect to. Nothing cart-shaped lives server-side until
+// Stripe's webhook fires on completion.
+
+function getCart() {
+    try { return JSON.parse(localStorage.getItem('ao_cart') || '[]'); }
+    catch { return []; }
+}
+
+function setCart(items) {
+    localStorage.setItem('ao_cart', JSON.stringify(items || []));
+    window.dispatchEvent(new CustomEvent('ao_cart_changed'));
+}
+
+function clearCart() { setCart([]); }
+
+function cartCount() {
+    return getCart().reduce((n, it) => n + (it.quantity || 1), 0);
+}
+
+/**
+ * Add (or bump quantity of) a cart line. Keyed on (platformId, tierId) so
+ * selecting the same tier twice increments the existing line rather than
+ * duplicating it.
+ */
+function addToCart(platformId, tierId, quantity = 1) {
+    const cart = getCart();
+    const existing = cart.find(it => it.platformId === platformId && it.tierId === tierId);
+    if (existing) {
+        existing.quantity = (existing.quantity || 1) + quantity;
+    } else {
+        cart.push({ platformId, tierId, quantity });
+    }
+    setCart(cart);
+}
+
+function removeFromCart(platformId, tierId) {
+    setCart(getCart().filter(it => !(it.platformId === platformId && it.tierId === tierId)));
+}
+
+function setCartQuantity(platformId, tierId, quantity) {
+    if (quantity <= 0) return removeFromCart(platformId, tierId);
+    const cart = getCart();
+    const existing = cart.find(it => it.platformId === platformId && it.tierId === tierId);
+    if (existing) { existing.quantity = quantity; setCart(cart); }
 }
 
 // --- Capability toggles (per-platform feature flags) ---

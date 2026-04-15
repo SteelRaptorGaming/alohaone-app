@@ -1,5 +1,8 @@
+using Aloha.Core.Auth;
+using Aloha.Core.Services;
 using AlohaOneApp.Api.Models;
 using AlohaOneApp.Api.Services;
+using Dapper;
 
 namespace AlohaOneApp.Api.Endpoints;
 
@@ -112,5 +115,68 @@ public static class MeEndpoints
             items = Array.Empty<object>(),
             note = "Stub — real activity feed wires up after shared identity lands.",
         })).AllowAnonymous();
+
+        // ── GET /api/me/subscriptions ────────────────────────────────────
+        // Phase E.2 — what platforms is the current user's organization
+        // actually subscribed to? Drives the AlohaOne dashboard tile grid
+        // and any client-side gating. Returns one row per
+        // (org, platform, status) in shared.org_subscriptions, joined up
+        // with tier and platform metadata so the shell can render without
+        // extra round-trips. Reuses the "first org by id" heuristic from
+        // CheckoutEndpoints until a user-selected active org lands.
+        group.MapGet("/subscriptions",
+            async (HttpContext ctx, IDbConnectionFactory db) =>
+        {
+            if (ctx.RequireAuth() is { } denied) return denied;
+            var auth = ctx.GetAuthContext();
+
+            using var conn = await db.CreateOpenConnectionAsync();
+
+            var org = await conn.QuerySingleOrDefaultAsync(
+                """
+                SELECT o.id, o.name
+                FROM shared.organizations o
+                JOIN shared.organization_users ou ON ou.organization_id = o.id
+                WHERE ou.user_id = @UserId
+                ORDER BY o.id
+                LIMIT 1
+                """, new { UserId = auth.UserId });
+
+            if (org is null)
+            {
+                return Results.Ok(new
+                {
+                    organization_id = (long?)null,
+                    organization_name = (string?)null,
+                    subscriptions = Array.Empty<object>()
+                });
+            }
+
+            var rows = await conn.QueryAsync(
+                """
+                SELECT s.id, s.platform_id, s.tier_id, s.status,
+                       s.current_period_end, s.stripe_subscription_id,
+                       s.created_at, s.updated_at,
+                       p.code  AS platform_code,
+                       p.name  AS platform_name,
+                       p.icon  AS platform_icon,
+                       p.enabled AS platform_enabled,
+                       t.code  AS tier_code,
+                       t.name  AS tier_name,
+                       t.monthly_price_cents
+                FROM shared.org_subscriptions s
+                JOIN shared.platforms      p ON p.id = s.platform_id
+                LEFT JOIN shared.platform_tiers t ON t.id = s.tier_id
+                WHERE s.organization_id = @OrgId
+                ORDER BY p.display_order, p.id
+                """, new { OrgId = (long)org.id });
+
+            return Results.Ok(new
+            {
+                organization_id = (long)org.id,
+                organization_name = (string)org.name,
+                subscriptions = rows
+            });
+        });
     }
 }
